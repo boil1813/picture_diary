@@ -121,6 +121,11 @@ header h1 {
     color: #666;
 }
 
+.tool-btn {
+    font-size: 0.9rem;
+    padding: 5px 12px;
+}
+
 .tool-btn.active {
     background-color: var(--accent-color);
     color: white;
