@@ -1,1 +1,172 @@
-/* Add styles here */
+:root {
+    --bg-color: #f7f3e8; /* Old paper color */
+    --line-color: #b0c4de; /* Notebook line color */
+    --text-color: #333;
+    --border-color: #555;
+    --accent-color: #ff6b6b; /* Crayon red */
+}
+
+body {
+    font-family: 'Gaegu', cursive;
+    background-color: #fff9e6; /* Soft yellow background */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    padding: 20px;
+    background-image: 
+        radial-gradient(circle, #e0e0e0 1px, transparent 1px),
+        radial-gradient(circle, #e0e0e0 1px, transparent 1px);
+    background-size: 20px 20px;
+    background-position: 0 0, 10px 10px;
+}
+
+.diary-container {
+    width: 100%;
+    max-width: 600px;
+    background-color: var(--bg-color);
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 
+        0 4px 15px rgba(0,0,0,0.1),
+        inset 0 0 50px rgba(0,0,0,0.05); /* Vignette effect */
+    border: 2px dashed var(--border-color);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Paper texture overlay (optional) */
+.diary-container::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: url('data:image/svg+xml;utf8,<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noise)" opacity="0.1"/></svg>');
+    pointer-events: none;
+    z-index: 10;
+}
+
+header h1 {
+    text-align: center;
+    font-size: 2.5rem;
+    color: var(--accent-color);
+    text-shadow: 2px 2px 0px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+    border-bottom: 3px double var(--line-color);
+    padding-bottom: 10px;
+}
+
+.date-input {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    font-size: 1.2rem;
+    margin-bottom: 20px;
+}
+
+.image-section {
+    width: 100%;
+    aspect-ratio: 4/3; /* Standard photo aspect ratio */
+    border: 3px solid #333;
+    background-color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 20px;
+    cursor: pointer;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.1);
+}
+
+.image-section:hover {
+    border-color: var(--accent-color);
+}
+
+.upload-area {
+    text-align: center;
+    color: #888;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+#image-upload {
+    display: none; /* Hidden input, triggered by JS */
+}
+
+canvas {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    /* Apply SVG Filter via CSS for crayon effect */
+    /* filter: url(#crayon-filter); This will be applied via JS conditionally */
+}
+
+.text-section {
+    position: relative;
+    min-height: 200px;
+    background-color: transparent;
+    border: 1px solid var(--line-color);
+    padding: 0;
+    font-size: 1.5rem;
+    line-height: 2rem; /* Should match the line height of the background */
+    background-image: linear-gradient(transparent 1.9rem, var(--line-color) 1.9rem);
+    background-size: 100% 2rem;
+    margin-bottom: 20px;
+}
+
+textarea {
+    width: 100%;
+    height: 100%;
+    min-height: 200px; /* Match section min-height */
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: 'Gaegu', cursive;
+    font-size: 1.5rem;
+    line-height: 2rem; /* Sync with background lines */
+    padding: 0 10px;
+    resize: none;
+    color: var(--text-color);
+    /* Improve alignment */
+    margin-top: 0.1rem; 
+}
+
+.diary-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+button {
+    font-family: 'Gaegu', cursive;
+    font-size: 1.2rem;
+    padding: 10px 20px;
+    border: 2px solid #333;
+    background-color: #fff;
+    cursor: pointer;
+    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px; /* Squiggly border */
+    transition: all 0.2s;
+}
+
+button:hover {
+    transform: rotate(-2deg) scale(1.05);
+    background-color: var(--accent-color);
+    color: white;
+    border-color: white;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 600px) {
+    .diary-container {
+        padding: 15px;
+    }
+    
+    header h1 {
+        font-size: 2rem;
+    }
+}

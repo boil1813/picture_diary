@@ -1,14 +1,76 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hello World</title>
-  <link href='/style.css' rel='stylesheet'>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>나만의 그림일기</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@300;400;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <h1>Hello, world!</h1>
-  <button onclick="console.log('hello');">Press me</button>
-  <script defer type="text/javascript" src="/main.js"></script>
+
+    <div class="diary-container">
+        <header class="diary-header">
+            <h1>그림일기</h1>
+            <div class="date-input">
+                <label for="diary-date">날짜:</label>
+                <input type="date" id="diary-date">
+                <label for="weather-select">날씨:</label>
+                <select id="weather-select">
+                    <option value="sunny">맑음 ☀️</option>
+                    <option value="cloudy">구름 ☁️</option>
+                    <option value="rainy">비 ☔</option>
+                    <option value="snowy">눈 ☃️</option>
+                </select>
+            </div>
+        </header>
+
+        <section class="image-section">
+            <div class="upload-area" id="upload-area">
+                <p>여기에 사진을 올리거나 클릭하세요!</p>
+                <input type="file" id="image-upload" accept="image/*">
+            </div>
+            <canvas id="drawing-canvas"></canvas>
+            <!-- Hidden original image for processing -->
+            <img id="source-image" style="display: none;">
+        </section>
+
+        <section class="text-section">
+            <textarea id="diary-text" placeholder="오늘 있었던 일을 적어보세요..."></textarea>
+            <div class="lines"></div> <!-- Background lines for notebook effect -->
+        </section>
+
+        <footer class="diary-footer">
+            <button id="reset-btn">지우개 (다시하기)</button>
+            <button id="save-btn">일기 저장하기</button>
+        </footer>
+    </div>
+
+    <!-- SVG Filters for Crayon/Paper Effect -->
+    <svg style="display: none;">
+        <defs>
+            <filter id="crayon-filter">
+                <!-- 1. Create noise for rough texture -->
+                <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" stitchTiles="stitch" result="noise"/>
+                
+                <!-- 2. Displace the source image using the noise -->
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G" result="displaced"/>
+                
+                <!-- 3. Enhance contrast to mimic wax/crayon -->
+                <feComponentTransfer in="displaced" result="high-contrast">
+                    <feFuncR type="linear" slope="1.2" intercept="-0.1"/>
+                    <feFuncG type="linear" slope="1.2" intercept="-0.1"/>
+                    <feFuncB type="linear" slope="1.2" intercept="-0.1"/>
+                </feComponentTransfer>
+                
+                <!-- 4. Blend with noise again for paper texture -->
+                <feBlend in="high-contrast" in2="noise" mode="multiply" result="textured"/>
+            </filter>
+        </defs>
+    </svg>
+
+    <script src="main.js" type="module"></script>
 </body>
 </html>
