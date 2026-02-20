@@ -139,7 +139,22 @@ document.addEventListener('DOMContentLoaded', () => {
         isDrawing = true;
         hasContent = true;
         uploadArea.style.display = 'none'; // Hide prompt once we start drawing
-        draw(e);
+        
+        updateBrush(); // Ensure current settings are applied
+        
+        // Calculate coordinates
+        const coords = getCoords(e);
+        const x = coords.x;
+        const y = coords.y;
+
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x, y); // Draw a dot
+        ctx.stroke();
+        
+        // Start path for dragging
+        ctx.beginPath();
+        ctx.moveTo(x, y);
     }
 
     function endDraw() {
@@ -150,10 +165,19 @@ document.addEventListener('DOMContentLoaded', () => {
     function draw(e) {
         if (!isDrawing) return;
 
-        // Get coordinates relative to canvas
-        const rect = canvas.getBoundingClientRect();
+        const coords = getCoords(e);
+        const x = coords.x;
+        const y = coords.y;
+
+        ctx.lineTo(x, y);
+        ctx.stroke();
         
-        // Handle Touch vs Mouse
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+    }
+    
+    function getCoords(e) {
+        const rect = canvas.getBoundingClientRect();
         let clientX, clientY;
         if (e.changedTouches) {
             clientX = e.changedTouches[0].clientX;
@@ -162,14 +186,10 @@ document.addEventListener('DOMContentLoaded', () => {
             clientX = e.clientX;
             clientY = e.clientY;
         }
-
-        const x = (clientX - rect.left) * (canvas.width / rect.width);
-        const y = (clientY - rect.top) * (canvas.height / rect.height);
-
-        ctx.lineTo(x, y);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(x, y);
+        return {
+            x: (clientX - rect.left) * (canvas.width / rect.width),
+            y: (clientY - rect.top) * (canvas.height / rect.height)
+        };
     }
 
     // Mouse Events
