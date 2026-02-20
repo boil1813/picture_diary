@@ -15,6 +15,7 @@ function init() {
     // Tools
     const btnBrush = document.getElementById('tool-brush');
     const btnEraser = document.getElementById('tool-eraser');
+    const btnFill = document.getElementById('tool-fill');
     const brushSizeInput = document.getElementById('brush-size');
     const colorPalette = document.getElementById('color-palette');
     const customColorInput = document.getElementById('custom-color');
@@ -25,7 +26,7 @@ function init() {
     const diaryText = document.getElementById('diary-text');
 
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true }); // optimize for read
 
     // Set initial canvas size
     canvas.width = 800;
@@ -51,7 +52,9 @@ function init() {
             if (color === brushColor) div.classList.add('active');
             div.onclick = () => {
                 brushColor = color;
-                currentTool = 'brush';
+                // If current is eraser, switch to brush (or fill if that was last used? assume brush for now)
+                // If fill is active, keep fill.
+                if (currentTool === 'eraser') currentTool = 'brush';
                 updateUI();
                 updateBrush();
                 document.querySelectorAll('.color-swatch').forEach(el => el.classList.remove('active'));
@@ -64,18 +67,88 @@ function init() {
     function updateUI() {
         if (btnBrush) btnBrush.classList.toggle('active', currentTool === 'brush');
         if (btnEraser) btnEraser.classList.toggle('active', currentTool === 'eraser');
+        if (btnFill) btnFill.classList.toggle('active', currentTool === 'fill');
     }
 
     function updateBrush() {
-        ctx.lineWidth = brushSize;
-        ctx.strokeStyle = currentTool === 'eraser' ? '#ffffff' : brushColor;
+        if (currentTool === 'eraser') {
+            ctx.lineWidth = brushSize * 5; // Eraser is 5x bigger
+            ctx.strokeStyle = '#ffffff';
+        } else {
+            ctx.lineWidth = brushSize;
+            ctx.strokeStyle = brushColor;
+        }
+    }
+
+    // --- Flood Fill Logic ---
+    function floodFill(startX, startY, hexColor) {
+        // Convert hex to RGB
+        const r = parseInt(hexColor.slice(1, 3), 16);
+        const g = parseInt(hexColor.slice(3, 5), 16);
+        const b = parseInt(hexColor.slice(5, 7), 16);
+        const fillColor = [r, g, b, 255];
+
+        const width = canvas.width;
+        const height = canvas.height;
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const data = imageData.data;
+
+        // Get starting color
+        const startPos = (startY * width + startX) * 4;
+        const startR = data[startPos];
+        const startG = data[startPos + 1];
+        const startB = data[startPos + 2];
+        const startA = data[startPos + 3];
+
+        // If clicking on same color, return
+        if (startR === r && startG === g && startB === b && startA === 255) return;
+
+        const tolerance = 50; // Sensitivity for noisy images
+        
+        function matchStartColor(pos) {
+            const r = data[pos];
+            const g = data[pos + 1];
+            const b = data[pos + 2];
+            // Simple distance check
+            return Math.abs(r - startR) < tolerance &&
+                   Math.abs(g - startG) < tolerance &&
+                   Math.abs(b - startB) < tolerance;
+        }
+
+        const stack = [[startX, startY]];
+
+        while (stack.length) {
+            const [x, y] = stack.pop();
+            const pos = (y * width + x) * 4;
+
+            if (matchStartColor(pos)) {
+                data[pos] = r;
+                data[pos + 1] = g;
+                data[pos + 2] = b;
+                data[pos + 3] = 255; // Force opaque
+
+                if (x > 0) stack.push([x - 1, y]);
+                if (x < width - 1) stack.push([x + 1, y]);
+                if (y > 0) stack.push([x, y - 1]);
+                if (y < height - 1) stack.push([x, y + 1]);
+            }
+        }
+        
+        ctx.putImageData(imageData, 0, 0);
     }
 
     // --- Event Listeners ---
     if (btnBrush) btnBrush.onclick = () => { currentTool = 'brush'; updateUI(); updateBrush(); };
     if (btnEraser) btnEraser.onclick = () => { currentTool = 'eraser'; updateUI(); updateBrush(); };
+    if (btnFill) btnFill.onclick = () => { currentTool = 'fill'; updateUI(); };
+    
     if (brushSizeInput) brushSizeInput.oninput = (e) => { brushSize = e.target.value; updateBrush(); };
-    if (customColorInput) customColorInput.oninput = (e) => { brushColor = e.target.value; currentTool = 'brush'; updateUI(); updateBrush(); };
+    if (customColorInput) customColorInput.oninput = (e) => { 
+        brushColor = e.target.value; 
+        if (currentTool === 'eraser') currentTool = 'brush'; 
+        updateUI(); 
+        updateBrush(); 
+    };
     
     const clearAction = () => {
         ctx.fillStyle = '#ffffff';
@@ -108,14 +181,22 @@ function init() {
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
         return {
-            x: (clientX - rect.left) * (canvas.width / rect.width),
-            y: (clientY - rect.top) * (canvas.height / rect.height)
+            x: Math.floor((clientX - rect.left) * (canvas.width / rect.width)),
+            y: Math.floor((clientY - rect.top) * (canvas.height / rect.height))
         };
     }
 
     const startDraw = (e) => {
-        isDrawing = true;
         if (uploadArea) uploadArea.style.display = 'none';
+        
+        if (currentTool === 'fill') {
+            const { x, y } = getCoords(e);
+            // Use current brush color
+            floodFill(x, y, brushColor);
+            return;
+        }
+
+        isDrawing = true;
         updateBrush();
         const { x, y } = getCoords(e);
         ctx.beginPath();

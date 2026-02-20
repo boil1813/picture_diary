@@ -265,22 +265,46 @@ textarea {
     border: none;
     outline: none;
     
-    /* Monospace font settings to approximate grid spacing for correct cursor position */
-    font-family: monospace; 
-    font-size: 20px; 
+    /* Font settings - using SamdungDaeHan for placeholder/input visibility */
+    font-family: 'SamdungDaeHan', cursive; 
+    /* Note: We keep monospace metrics logic in mind, but user wants this font. 
+       We might need to adjust letter-spacing if alignment drifts, 
+       but primarily they want the 'look'. 
+       The invisible text approach used monospace. 
+       If we show text directly, we use the font directly. */
+    font-size: 24px; 
     line-height: 40px; 
-    letter-spacing: 14.5px; /* Tuned for 40px width approx */
+    letter-spacing: 0; /* Reset spacing for natural font flow, or tune it */
     padding: 0; 
     margin: 0;
+    padding-left: 20px; /* Slight offset to match grid center approx */
+    padding-top: 4px; /* Vertical alignment */
     
-    color: transparent; /* Hide real text */
-    caret-color: var(--accent-color); /* Show cursor */
+    color: transparent; /* Keep transparent if using grid-display sync */
+    /* Wait, user asked for font change on "placeholder". 
+       If textarea is transparent, placeholder is also transparent? 
+       Usually yes. 
+       The previous fix RE-ENABLED grid-display for the content.
+       So the textarea ITSELF is transparent.
+       BUT the placeholder needs to be visible when empty.
+    */
+    caret-color: var(--accent-color);
     resize: none;
     overflow-y: hidden;
     white-space: pre-wrap; 
     word-break: break-all;
     display: block;
 }
+
+textarea::placeholder {
+    color: #aaa;
+    font-family: 'SamdungDaeHan', cursive;
+    opacity: 1; /* Ensure visibility */
+}
+
+/* If the user wants the INPUT to be this font, we rely on the grid-display div which ALREADY uses SamdungDaeHan. 
+   So we just need to ensure the placeholder (which is in the textarea) is visible and styled.
+*/
 
 .diary-footer {
     display: flex;
