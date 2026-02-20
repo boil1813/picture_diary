@@ -147,9 +147,66 @@ document.addEventListener('DOMContentLoaded', () => {
         canvas.style.filter = 'none';
     });
 
+    // Textarea Grid Sync Logic
+    const diaryText = document.getElementById('diary-text');
+    const gridDisplay = document.getElementById('diary-grid-display');
+    const MAX_COLS = 13;
+    const GRID_SIZE = 40;
+
+    diaryText.addEventListener('input', syncTextToGrid);
+    
+    // Initial sync
+    syncTextToGrid();
+
+    function syncTextToGrid() {
+        const text = diaryText.value;
+        gridDisplay.innerHTML = ''; // Clear existing
+        
+        let col = 0;
+        let row = 0;
+        
+        // Split by characters to handle emojis correctly (if possible), 
+        // but simple split is okay for MVP. Array.from handles surrogate pairs better.
+        const chars = Array.from(text);
+
+        chars.forEach(char => {
+            // Create cell
+            const cell = document.createElement('div');
+            cell.className = 'grid-cell';
+            
+            // Position cell absolutely? No, CSS Grid handles layout if we just append divs.
+            // BUT, newlines break the flow if we just append divs linearly in a grid that wraps automatically.
+            // If we use grid-template-columns, divs will fill row 1 then row 2.
+            // So for a newline, we need to insert "empty" filler cells until the end of the row.
+            
+            if (char === '\n') {
+                // Fill remaining cells in current row
+                const remaining = MAX_COLS - col;
+                for (let i = 0; i < remaining; i++) {
+                    const filler = document.createElement('div');
+                    filler.className = 'grid-cell';
+                    gridDisplay.appendChild(filler);
+                }
+                col = 0;
+                row++;
+                return; // Don't render the newline char itself
+            }
+            
+            // Regular char
+            cell.textContent = char;
+            gridDisplay.appendChild(cell);
+            
+            col++;
+            if (col >= MAX_COLS) {
+                col = 0;
+                row++;
+            }
+        });
+    }
+
     // Save (Combined Image and Text)
     saveBtn.addEventListener('click', () => {
-        const diaryText = document.getElementById('diary-text').value;
+        const diaryContent = diaryText.value;
         const diaryDate = document.getElementById('diary-date').value;
         const weatherSelect = document.getElementById('weather-select');
         const weatherText = weatherSelect.options[weatherSelect.selectedIndex].text;
@@ -161,7 +218,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const headerHeight = 120;
         const imageWidth = canvas.width;
         const imageHeight = canvas.height;
-        const textSectionHeight = 400; 
+        // Calculate text height based on rows
+        // We can estimate rows from the sync logic or just use a fixed minimum
+        const textSectionHeight = Math.max(400, (Math.ceil(diaryContent.length / MAX_COLS) + 5) * GRID_SIZE); 
         
         exportCanvas.width = imageWidth + (padding * 2);
         exportCanvas.height = headerHeight + imageHeight + textSectionHeight + (padding * 2);
@@ -196,50 +255,61 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 4. Draw Text Section with Grid (Monun Paper)
         const textStartY = headerHeight + imageHeight + padding + 60;
-        const gridSize = 40; 
-        const maxRows = 10;
-        const maxCols = Math.floor(imageWidth / gridSize);
-        const actualTextWidth = maxCols * gridSize;
+        // Use fixed MAX_COLS from UI
+        // Calculate centered start X for grid
+        const gridWidth = MAX_COLS * GRID_SIZE;
+        const gridStartX = (exportCanvas.width - gridWidth) / 2; // Center the grid
+        
+        const rowsToDraw = Math.floor(textSectionHeight / GRID_SIZE);
 
         exportCtx.strokeStyle = '#b0c4de';
         exportCtx.lineWidth = 1;
 
         // Draw horizontal lines
-        for (let i = 0; i <= maxRows; i++) {
-            const y = textStartY + (i * gridSize);
+        for (let i = 0; i <= rowsToDraw; i++) {
+            const y = textStartY + (i * GRID_SIZE);
             exportCtx.beginPath();
-            exportCtx.moveTo(padding, y);
-            exportCtx.lineTo(padding + actualTextWidth, y);
+            exportCtx.moveTo(gridStartX, y);
+            exportCtx.lineTo(gridStartX + gridWidth, y);
             exportCtx.stroke();
         }
         // Draw vertical lines
-        for (let j = 0; j <= maxCols; j++) {
-            const x = padding + (j * gridSize);
+        for (let j = 0; j <= MAX_COLS; j++) {
+            const x = gridStartX + (j * GRID_SIZE);
             exportCtx.beginPath();
             exportCtx.moveTo(x, textStartY);
-            exportCtx.lineTo(x, textStartY + (maxRows * gridSize));
+            exportCtx.lineTo(x, textStartY + (rowsToDraw * GRID_SIZE));
             exportCtx.stroke();
         }
 
         // 5. Draw the Diary Content
         exportCtx.font = `24px 'SamdungDaeHan'`;
         exportCtx.fillStyle = '#333';
-        exportCtx.textAlign = 'left';
+        exportCtx.textAlign = 'center'; // Center in cell
+        exportCtx.textBaseline = 'middle';
         
-        const textLines = diaryText.split('\n');
-        
-        textLines.forEach((line, rowIndex) => {
-            if (rowIndex < maxRows) {
-                const chars = line.split('');
-                chars.forEach((char, colIndex) => {
-                    if (colIndex < maxCols) {
-                        // Position text in the center of the grid box
-                        const x = padding + (colIndex * gridSize) + (gridSize / 2);
-                        const y = textStartY + (rowIndex * gridSize) + (gridSize / 2) + 8; // Small adjustment for baseline
-                        exportCtx.textAlign = 'center';
-                        exportCtx.fillText(char, x, y);
-                    }
-                });
+        // Re-run the sync logic purely for position calculation
+        let col = 0;
+        let row = 0;
+        const chars = Array.from(diaryContent);
+
+        chars.forEach(char => {
+            if (char === '\n') {
+                col = 0;
+                row++;
+                return;
+            }
+
+            if (row < rowsToDraw) {
+                const x = gridStartX + (col * GRID_SIZE) + (GRID_SIZE / 2);
+                const y = textStartY + (row * GRID_SIZE) + (GRID_SIZE / 2) + 2; // +2 for visual centering
+                exportCtx.fillText(char, x, y);
+            }
+            
+            col++;
+            if (col >= MAX_COLS) {
+                col = 0;
+                row++;
             }
         });
 
