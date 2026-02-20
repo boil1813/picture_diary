@@ -20,6 +20,8 @@ function init() {
     const colorPalette = document.getElementById('color-palette');
     const customColorInput = document.getElementById('custom-color');
     const btnClear = document.getElementById('btn-clear-canvas');
+    const btnUndo = document.getElementById('btn-undo');
+    const btnRedo = document.getElementById('btn-redo');
     
     const saveBtn = document.getElementById('save-btn');
     const resetBtn = document.getElementById('reset-btn'); 
@@ -29,6 +31,55 @@ function init() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d', { willReadFrequently: true }); // optimize for read
 
+    // --- History Stack ---
+    let history = [];
+    let historyStep = -1;
+    const MAX_HISTORY = 30;
+
+    function saveHistory() {
+        // If we are in the middle of history (undid some steps), discard the "future" steps
+        if (historyStep < history.length - 1) {
+            history = history.slice(0, historyStep + 1);
+        }
+        
+        // Push current state
+        history.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+        historyStep++;
+
+        // Limit size
+        if (history.length > MAX_HISTORY) {
+            history.shift(); // Remove oldest
+            historyStep--;
+        }
+        
+        updateHistoryUI();
+    }
+
+    function undo() {
+        if (historyStep > 0) {
+            historyStep--;
+            ctx.putImageData(history[historyStep], 0, 0);
+            updateHistoryUI();
+        }
+    }
+
+    function redo() {
+        if (historyStep < history.length - 1) {
+            historyStep++;
+            ctx.putImageData(history[historyStep], 0, 0);
+            updateHistoryUI();
+        }
+    }
+
+    function updateHistoryUI() {
+        if (btnUndo) btnUndo.disabled = historyStep <= 0;
+        if (btnRedo) btnRedo.disabled = historyStep >= history.length - 1;
+        
+        // Optional: styling for disabled state if not handled by CSS default :disabled
+        if (btnUndo) btnUndo.style.opacity = btnUndo.disabled ? 0.5 : 1;
+        if (btnRedo) btnRedo.style.opacity = btnRedo.disabled ? 0.5 : 1;
+    }
+
     // Set initial canvas size
     canvas.width = 800;
     canvas.height = 600;
@@ -36,6 +87,9 @@ function init() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
+    
+    // Initial save (blank state)
+    saveHistory();
 
     // --- Color Palette ---
     const colors = [
@@ -162,7 +216,14 @@ function init() {
     if (btnEraser) btnEraser.onclick = () => { currentTool = 'eraser'; updateUI(); updateBrush(); };
     if (btnFill) btnFill.onclick = () => { currentTool = 'fill'; updateUI(); };
     
-    if (brushSizeInput) brushSizeInput.oninput = (e) => { brushSize = e.target.value; updateBrush(); };
+    if (btnUndo) btnUndo.onclick = undo;
+    if (btnRedo) btnRedo.onclick = redo;
+
+    if (brushSizeInput) brushSizeInput.oninput = (e) => { 
+        brushSize = e.target.value; 
+        updateBrush(); 
+        updateBrushGuide(); // Update guide immediately when size changes
+    };
     if (customColorInput) customColorInput.oninput = (e) => { 
         brushColor = e.target.value; 
         if (currentTool === 'eraser') currentTool = 'brush'; 
@@ -173,6 +234,7 @@ function init() {
     const clearAction = () => {
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
+        saveHistory(); // Save clear action
         if (uploadArea) uploadArea.style.display = 'flex';
         canvas.style.filter = 'none';
     };
@@ -188,6 +250,7 @@ function init() {
             reader.onload = (event) => {
                 sourceImage.onload = () => {
                     processImage(sourceImage, canvas, ctx, uploadArea);
+                    saveHistory(); // Save image upload
                 };
                 sourceImage.src = event.target.result;
             };
@@ -213,6 +276,7 @@ function init() {
             const { x, y } = getCoords(e);
             // Use current brush color
             floodFill(x, y, brushColor);
+            saveHistory(); // Save fill action
             return;
         }
 
@@ -247,8 +311,11 @@ function init() {
     };
 
     const stopDraw = () => { 
-        isDrawing = false; 
-        ctx.beginPath(); 
+        if (isDrawing) {
+            isDrawing = false; 
+            ctx.beginPath(); 
+            saveHistory(); // Save stroke
+        }
     };
 
     canvas.onmousedown = startDraw;
