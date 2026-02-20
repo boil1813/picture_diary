@@ -1,57 +1,55 @@
-document.addEventListener('DOMContentLoaded', () => {
-    // --- Elements ---
-    const uploadInput = document.getElementById('image-upload');
-    const uploadTrigger = document.getElementById('btn-upload-trigger');
-    const uploadArea = document.getElementById('upload-area');
-    const canvas = document.getElementById('drawing-canvas');
-    const ctx = canvas.getContext('2d');
-    const sourceImage = document.getElementById('source-image');
-    
-    // Tools
-    const btnBrush = document.getElementById('tool-brush');
-    const btnEraser = document.getElementById('tool-eraser');
-    const brushSizeInput = document.getElementById('brush-size');
-    const colorPalette = document.getElementById('color-palette');
-    const customColorInput = document.getElementById('custom-color');
-    const btnClear = document.getElementById('btn-clear-canvas');
-    
-    const saveBtn = document.getElementById('save-btn');
-    const resetBtn = document.getElementById('reset-btn'); // From footer, keep as "Full Reset" or remove? 
-    // The footer "reset-btn" says "Eraser (Retry)". Let's repurpose it or just use the new "Clear" button. 
-    // The prompt implied adding controls, so I'll rely on the new top controls.
-    // I will hook up the footer button to the same "Clear" logic for consistency.
+// Remove DOMContentLoaded wrapper since type="module" is deferred
+// document.addEventListener('DOMContentLoaded', () => { ... });
 
-    // --- State ---
-    let isDrawing = false;
-    let currentTool = 'brush'; // 'brush' or 'eraser'
-    let brushSize = 5;
-    let brushColor = '#000000';
-    let hasContent = false; // To hide/show "Upload Here" text
+// --- Elements ---
+const uploadInput = document.getElementById('image-upload');
+const uploadTrigger = document.getElementById('btn-upload-trigger');
+const uploadArea = document.getElementById('upload-area');
+const canvas = document.getElementById('drawing-canvas');
+const ctx = canvas.getContext('2d');
+const sourceImage = document.getElementById('source-image');
 
-    // --- Initialization ---
-    function initCanvas() {
-        // Set initial canvas size to match container (default 4:3 roughly)
-        // We need actual pixel dimensions for drawing to not look blurry.
-        // Let's set a standard resolution and scale via CSS.
-        canvas.width = 800;
-        canvas.height = 600;
-        
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height); // White background
-        
-        // Default brush
-        updateBrush();
-    }
+// Tools
+const btnBrush = document.getElementById('tool-brush');
+const btnEraser = document.getElementById('tool-eraser');
+const brushSizeInput = document.getElementById('brush-size');
+const colorPalette = document.getElementById('color-palette');
+const customColorInput = document.getElementById('custom-color');
+const btnClear = document.getElementById('btn-clear-canvas');
 
-    // Generate Color Palette
-    const colors = [
-        '#000000', '#FF3B30', '#FF9500', '#FFCC00', '#4CD964', 
-        '#5AC8FA', '#007AFF', '#5856D6', '#FF2D55', '#8E8E93', 
-        '#6F4E37', '#FFFFFF'
-    ];
+const saveBtn = document.getElementById('save-btn');
+const resetBtn = document.getElementById('reset-btn'); 
+
+// --- State ---
+let isDrawing = false;
+let currentTool = 'brush'; // 'brush' or 'eraser'
+let brushSize = 5;
+let brushColor = '#000000';
+let hasContent = false; // To hide/show "Upload Here" text
+
+// --- Initialization ---
+function initCanvas() {
+    // Set initial canvas size to match container (default 4:3 roughly)
+    canvas.width = 800;
+    canvas.height = 600;
     
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height); // White background
+    
+    // Default brush
+    updateBrush();
+}
+
+// Generate Color Palette
+const colors = [
+    '#000000', '#FF3B30', '#FF9500', '#FFCC00', '#4CD964', 
+    '#5AC8FA', '#007AFF', '#5856D6', '#FF2D55', '#8E8E93', 
+    '#6F4E37', '#FFFFFF'
+];
+
+if (colorPalette) {
     colors.forEach(color => {
         const div = document.createElement('div');
         div.className = 'color-swatch';
@@ -62,137 +60,144 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Select first color
-    selectColor('#000000', colorPalette.firstChild);
-
-    function selectColor(color, element) {
-        brushColor = color;
-        currentTool = 'brush'; // Switch to brush when color picked
-        updateToolUI();
-        
-        // Highlight UI
-        document.querySelectorAll('.color-swatch').forEach(el => el.classList.remove('active'));
-        if (element) element.classList.add('active');
-        
-        customColorInput.value = color; // Sync picker
-        updateBrush();
+    if (colorPalette.firstChild) {
+        selectColor('#000000', colorPalette.firstChild);
     }
+}
 
-    // --- Event Listeners: Tools ---
+function selectColor(color, element) {
+    brushColor = color;
+    currentTool = 'brush'; // Switch to brush when color picked
+    updateToolUI();
     
+    // Highlight UI
+    document.querySelectorAll('.color-swatch').forEach(el => el.classList.remove('active'));
+    if (element) element.classList.add('active');
+    
+    if (customColorInput) customColorInput.value = color; // Sync picker
+    updateBrush();
+}
+
+// --- Event Listeners: Tools ---
+
+if (btnBrush) {
     btnBrush.addEventListener('click', () => {
         currentTool = 'brush';
         updateToolUI();
         updateBrush();
     });
+}
 
+if (btnEraser) {
     btnEraser.addEventListener('click', () => {
         currentTool = 'eraser';
         updateToolUI();
-        updateBrush(); // Eraser is just white brush in this simple version? Or composite operation?
-        // Using composite destination-out makes it transparent, revealing background... 
-        // But our background is part of the canvas (white rect). 
-        // So 'eraser' should paint white OR restore the original paper texture?
-        // For simplicity: Paint White if no image, or if image exists... simpler to just Paint White for now.
-        // Better: Use globalCompositeOperation if we want true erasing, but we have a white bg fill.
+        updateBrush(); 
     });
+}
 
+if (brushSizeInput) {
     brushSizeInput.addEventListener('input', (e) => {
         brushSize = e.target.value;
         updateBrush();
     });
+}
 
+if (customColorInput) {
     customColorInput.addEventListener('input', (e) => {
         selectColor(e.target.value, null);
     });
+}
+
+if (btnClear) btnClear.addEventListener('click', clearCanvas);
+if (resetBtn) resetBtn.addEventListener('click', clearCanvas);
+
+if (uploadTrigger) uploadTrigger.addEventListener('click', () => uploadInput.click());
+if (uploadInput) uploadInput.addEventListener('change', handleImageUpload);
+
+function updateToolUI() {
+    if (btnBrush) btnBrush.classList.toggle('active', currentTool === 'brush');
+    if (btnEraser) btnEraser.classList.toggle('active', currentTool === 'eraser');
+}
+
+function updateBrush() {
+    ctx.lineWidth = brushSize;
+    if (currentTool === 'eraser') {
+        ctx.strokeStyle = '#ffffff'; 
+    } else {
+        ctx.strokeStyle = brushColor;
+    }
+}
+
+function clearCanvas() {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    hasContent = false;
+    if (uploadArea) uploadArea.style.display = 'flex'; // Show prompt again
+    canvas.style.filter = 'none'; // Remove crayon filter if applied
+}
+
+// --- Drawing Logic ---
+
+function startDraw(e) {
+    isDrawing = true;
+    hasContent = true;
+    if (uploadArea) uploadArea.style.display = 'none'; // Hide prompt once we start drawing
     
-    btnClear.addEventListener('click', clearCanvas);
-    if (resetBtn) resetBtn.addEventListener('click', clearCanvas);
-
-    uploadTrigger.addEventListener('click', () => uploadInput.click());
-    uploadInput.addEventListener('change', handleImageUpload);
-
-    function updateToolUI() {
-        btnBrush.classList.toggle('active', currentTool === 'brush');
-        btnEraser.classList.toggle('active', currentTool === 'eraser');
-    }
-
-    function updateBrush() {
-        ctx.lineWidth = brushSize;
-        if (currentTool === 'eraser') {
-            ctx.strokeStyle = '#ffffff'; 
-        } else {
-            ctx.strokeStyle = brushColor;
-        }
-    }
-
-    function clearCanvas() {
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        hasContent = false;
-        uploadArea.style.display = 'flex'; // Show prompt again
-        canvas.style.filter = 'none'; // Remove crayon filter if applied
-    }
-
-    // --- Drawing Logic ---
+    updateBrush(); // Ensure current settings are applied
     
-    function startDraw(e) {
-        isDrawing = true;
-        hasContent = true;
-        uploadArea.style.display = 'none'; // Hide prompt once we start drawing
-        
-        updateBrush(); // Ensure current settings are applied
-        
-        // Calculate coordinates
-        const coords = getCoords(e);
-        const x = coords.x;
-        const y = coords.y;
+    // Calculate coordinates
+    const coords = getCoords(e);
+    const x = coords.x;
+    const y = coords.y;
 
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x, y); // Draw a dot
-        ctx.stroke();
-        
-        // Start path for dragging
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-    }
-
-    function endDraw() {
-        isDrawing = false;
-        ctx.beginPath(); // Reset path so lines don't connect
-    }
-
-    function draw(e) {
-        if (!isDrawing) return;
-
-        const coords = getCoords(e);
-        const x = coords.x;
-        const y = coords.y;
-
-        ctx.lineTo(x, y);
-        ctx.stroke();
-        
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-    }
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x, y); // Draw a dot
+    ctx.stroke();
     
-    function getCoords(e) {
-        const rect = canvas.getBoundingClientRect();
-        let clientX, clientY;
-        if (e.changedTouches) {
-            clientX = e.changedTouches[0].clientX;
-            clientY = e.changedTouches[0].clientY;
-        } else {
-            clientX = e.clientX;
-            clientY = e.clientY;
-        }
-        return {
-            x: (clientX - rect.left) * (canvas.width / rect.width),
-            y: (clientY - rect.top) * (canvas.height / rect.height)
-        };
-    }
+    // Start path for dragging
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+}
 
-    // Mouse Events
+function endDraw() {
+    isDrawing = false;
+    ctx.beginPath(); // Reset path so lines don't connect
+}
+
+function draw(e) {
+    if (!isDrawing) return;
+
+    const coords = getCoords(e);
+    const x = coords.x;
+    const y = coords.y;
+
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+}
+
+function getCoords(e) {
+    const rect = canvas.getBoundingClientRect();
+    let clientX, clientY;
+    if (e.changedTouches) {
+        clientX = e.changedTouches[0].clientX;
+        clientY = e.changedTouches[0].clientY;
+    } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
+    }
+    return {
+        x: (clientX - rect.left) * (canvas.width / rect.width),
+        y: (clientY - rect.top) * (canvas.height / rect.height)
+    };
+}
+
+// Mouse Events
+if (canvas) {
     canvas.addEventListener('mousedown', startDraw);
     canvas.addEventListener('mouseup', endDraw);
     canvas.addEventListener('mousemove', draw);
@@ -202,168 +207,175 @@ document.addEventListener('DOMContentLoaded', () => {
     canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDraw(e); });
     canvas.addEventListener('touchend', (e) => { e.preventDefault(); endDraw(); });
     canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); });
+}
 
 
-    // --- Image Processing Logic (Adapted) ---
+// --- Image Processing Logic (Adapted) ---
 
-    function handleImageUpload(e) {
-        const file = e.target.files[0];
-        if (!file) return;
+function handleImageUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
 
-        const reader = new FileReader();
-        reader.onload = (event) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        if (sourceImage) {
             sourceImage.onload = () => {
                 processImage(sourceImage);
                 hasContent = true;
-                uploadArea.style.display = 'none';
+                if (uploadArea) uploadArea.style.display = 'none';
             };
             sourceImage.src = event.target.result;
-        };
-        reader.readAsDataURL(file);
-    }
-
-    function processImage(img) {
-        // Keep dimensions, but scale to fit if too huge, or match default canvas
-        // Let's resize canvas to image aspect ratio, but keep within bounds
-        const maxWidth = 800;
-        const maxHeight = 600;
-        let width = img.width;
-        let height = img.height;
-        
-        // Simple scale down
-        if (width > maxWidth || height > maxHeight) {
-            const ratio = Math.min(maxWidth / width, maxHeight / height);
-            width = width * ratio;
-            height = height * ratio;
         }
+    };
+    reader.readAsDataURL(file);
+}
 
-        canvas.width = width;
-        canvas.height = height;
-        
-        // Re-apply context settings after resize
-        updateBrush();
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-
-        // ... Existing Image Processing Code ...
-        
-        // Create offscreen canvases
-        const colorLayer = document.createElement('canvas');
-        const edgeLayer = document.createElement('canvas');
-        colorLayer.width = width;
-        colorLayer.height = height;
-        edgeLayer.width = width;
-        edgeLayer.height = height;
-
-        const colorCtx = colorLayer.getContext('2d');
-        const edgeCtx = edgeLayer.getContext('2d');
-
-        // Edge Detection
-        edgeCtx.drawImage(img, 0, 0, width, height);
-        edgeCtx.filter = 'grayscale(100%) contrast(300%)';
-        edgeCtx.drawImage(img, 0, 0, width, height);
-        edgeCtx.globalCompositeOperation = 'difference';
-        edgeCtx.drawImage(img, 2, 2, width, height);
-        edgeCtx.globalCompositeOperation = 'source-over';
-        edgeCtx.filter = 'grayscale(100%) invert(100%) contrast(1000%) brightness(1.5)';
-        edgeCtx.drawImage(edgeLayer, 0, 0);
-        edgeCtx.filter = 'none';
-
-        // Color Simplification
-        const smallCanvas = document.createElement('canvas');
-        const sWidth = width / 8;
-        const sHeight = height / 8;
-        smallCanvas.width = sWidth;
-        smallCanvas.height = sHeight;
-        const sCtx = smallCanvas.getContext('2d');
-        sCtx.drawImage(img, 0, 0, sWidth, sHeight);
-
-        colorCtx.filter = 'saturate(200%) contrast(150%) blur(3px)';
-        colorCtx.drawImage(smallCanvas, 0, 0, sWidth, sHeight, -5, -5, width + 10, height + 10); 
-
-        // Composite to Main Canvas
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(0, 0, width, height);
-
-        ctx.globalCompositeOperation = 'multiply';
-        ctx.drawImage(colorLayer, 0, 0);
-        ctx.drawImage(edgeLayer, 0, 0);
-
-        // Noise
-        applyTexture(width, height);
-
-        // Reset Composite for future drawing
-        ctx.globalCompositeOperation = 'source-over';
-        
-        // Apply CSS Filter for visual effect
-        canvas.style.filter = 'url(#crayon-filter)';
+function processImage(img) {
+    // Keep dimensions, but scale to fit if too huge, or match default canvas
+    // Let's resize canvas to image aspect ratio, but keep within bounds
+    const maxWidth = 800;
+    const maxHeight = 600;
+    let width = img.width;
+    let height = img.height;
+    
+    // Simple scale down
+    if (width > maxWidth || height > maxHeight) {
+        const ratio = Math.min(maxWidth / width, maxHeight / height);
+        width = width * ratio;
+        height = height * ratio;
     }
 
-    function applyTexture(w, h) {
-        const noiseCanvas = document.createElement('canvas');
-        noiseCanvas.width = w;
-        noiseCanvas.height = h;
-        const nCtx = noiseCanvas.getContext('2d');
-        
-        const imageData = nCtx.createImageData(w, h);
-        const buffer = new Uint32Array(imageData.data.buffer);
-        
-        for (let i = 0; i < buffer.length; i++) {
-            if (Math.random() < 0.1) { 
-                buffer[i] = 0x10000000; 
-            }
+    canvas.width = width;
+    canvas.height = height;
+    
+    // Re-apply context settings after resize
+    updateBrush();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // ... Existing Image Processing Code ...
+    
+    // Create offscreen canvases
+    const colorLayer = document.createElement('canvas');
+    const edgeLayer = document.createElement('canvas');
+    colorLayer.width = width;
+    colorLayer.height = height;
+    edgeLayer.width = width;
+    edgeLayer.height = height;
+
+    const colorCtx = colorLayer.getContext('2d');
+    const edgeCtx = edgeLayer.getContext('2d');
+
+    // Edge Detection
+    edgeCtx.drawImage(img, 0, 0, width, height);
+    edgeCtx.filter = 'grayscale(100%) contrast(300%)';
+    edgeCtx.drawImage(img, 0, 0, width, height);
+    edgeCtx.globalCompositeOperation = 'difference';
+    edgeCtx.drawImage(img, 2, 2, width, height);
+    edgeCtx.globalCompositeOperation = 'source-over';
+    edgeCtx.filter = 'grayscale(100%) invert(100%) contrast(1000%) brightness(1.5)';
+    edgeCtx.drawImage(edgeLayer, 0, 0);
+    edgeCtx.filter = 'none';
+
+    // Color Simplification
+    const smallCanvas = document.createElement('canvas');
+    const sWidth = width / 8;
+    const sHeight = height / 8;
+    smallCanvas.width = sWidth;
+    smallCanvas.height = sHeight;
+    const sCtx = smallCanvas.getContext('2d');
+    sCtx.drawImage(img, 0, 0, sWidth, sHeight);
+
+    colorCtx.filter = 'saturate(200%) contrast(150%) blur(3px)';
+    colorCtx.drawImage(smallCanvas, 0, 0, sWidth, sHeight, -5, -5, width + 10, height + 10); 
+
+    // Composite to Main Canvas
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.drawImage(colorLayer, 0, 0);
+    ctx.drawImage(edgeLayer, 0, 0);
+
+    // Noise
+    applyTexture(width, height);
+
+    // Reset Composite for future drawing
+    ctx.globalCompositeOperation = 'source-over';
+    
+    // Apply CSS Filter for visual effect
+    canvas.style.filter = 'url(#crayon-filter)';
+}
+
+function applyTexture(w, h) {
+    const noiseCanvas = document.createElement('canvas');
+    noiseCanvas.width = w;
+    noiseCanvas.height = h;
+    const nCtx = noiseCanvas.getContext('2d');
+    
+    const imageData = nCtx.createImageData(w, h);
+    const buffer = new Uint32Array(imageData.data.buffer);
+    
+    for (let i = 0; i < buffer.length; i++) {
+        if (Math.random() < 0.1) { 
+            buffer[i] = 0x10000000; 
         }
-        
-        nCtx.putImageData(imageData, 0, 0);
-        ctx.globalCompositeOperation = 'multiply';
-        ctx.drawImage(noiseCanvas, 0, 0);
-        ctx.globalCompositeOperation = 'source-over';
     }
+    
+    nCtx.putImageData(imageData, 0, 0);
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.drawImage(noiseCanvas, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+}
 
-    // --- Diary Text Sync (Keep existing) ---
-    const diaryText = document.getElementById('diary-text');
-    const gridDisplay = document.getElementById('diary-grid-display');
-    const MAX_COLS = 13;
-    const GRID_SIZE = 40;
+// --- Diary Text Sync (Keep existing) ---
+const diaryText = document.getElementById('diary-text');
+const gridDisplay = document.getElementById('diary-grid-display');
+const MAX_COLS = 13;
+const GRID_SIZE = 40;
 
+if (diaryText) {
     diaryText.addEventListener('input', syncTextToGrid);
     syncTextToGrid();
+}
 
-    function syncTextToGrid() {
-        const text = diaryText.value;
-        gridDisplay.innerHTML = '';
-        let col = 0;
-        let row = 0;
-        const chars = Array.from(text);
+function syncTextToGrid() {
+    if (!diaryText || !gridDisplay) return;
+    const text = diaryText.value;
+    gridDisplay.innerHTML = '';
+    let col = 0;
+    let row = 0;
+    const chars = Array.from(text);
 
-        chars.forEach(char => {
-            const cell = document.createElement('div');
-            cell.className = 'grid-cell';
-            
-            if (char === '\n') {
-                const remaining = MAX_COLS - col;
-                for (let i = 0; i < remaining; i++) {
-                    const filler = document.createElement('div');
-                    filler.className = 'grid-cell';
-                    gridDisplay.appendChild(filler);
-                }
-                col = 0;
-                row++;
-                return;
+    chars.forEach(char => {
+        const cell = document.createElement('div');
+        cell.className = 'grid-cell';
+        
+        if (char === '\n') {
+            const remaining = MAX_COLS - col;
+            for (let i = 0; i < remaining; i++) {
+                const filler = document.createElement('div');
+                filler.className = 'grid-cell';
+                gridDisplay.appendChild(filler);
             }
-            
-            cell.textContent = char;
-            gridDisplay.appendChild(cell);
-            
-            col++;
-            if (col >= MAX_COLS) {
-                col = 0;
-                row++;
-            }
-        });
-    }
+            col = 0;
+            row++;
+            return;
+        }
+        
+        cell.textContent = char;
+        gridDisplay.appendChild(cell);
+        
+        col++;
+        if (col >= MAX_COLS) {
+            col = 0;
+            row++;
+        }
+    });
+}
 
-    // --- Save Functionality ---
+// --- Save Functionality ---
+if (saveBtn) {
     saveBtn.addEventListener('click', () => {
         const diaryContent = diaryText.value;
         const diaryDate = document.getElementById('diary-date').value;
@@ -467,7 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
         link.href = exportCanvas.toDataURL('image/png');
         link.click();
     });
+}
 
-    // Initialize
-    initCanvas();
-});
+// Initialize
+initCanvas();

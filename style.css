@@ -245,7 +245,7 @@ textarea {
     width: 520px; /* Match grid width */
     height: 100%;
     min-height: 400px;
-    background: transparent;
+    background: transparent !important; /* Force transparency */
     border: none;
     outline: none;
     
