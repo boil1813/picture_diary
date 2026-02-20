@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function processImage(img) {
-        // 1. Resize canvas
+        // 1. Setup Canvas
         const maxWidth = 800;
         let width = img.width;
         let height = img.height;
@@ -41,61 +41,78 @@ document.addEventListener('DOMContentLoaded', () => {
 
         canvas.width = width;
         canvas.height = height;
-        
-        // 2. Clear canvas
         ctx.clearRect(0, 0, width, height);
 
-        // --- Layer 1: Base Color (Posterized) ---
-        // Create a temp canvas for the color layer
-        const colorCanvas = document.createElement('canvas');
-        colorCanvas.width = width;
-        colorCanvas.height = height;
-        const colorCtx = colorCanvas.getContext('2d');
-        
-        // Draw image with saturation and blur for "soft wax" look
-        colorCtx.filter = 'saturate(2) contrast(1.2) blur(2px)';
-        colorCtx.drawImage(img, 0, 0, width, height);
-        
-        // Draw the color layer onto main canvas
-        ctx.drawImage(colorCanvas, 0, 0);
+        // Create offscreen canvases for layers
+        const colorLayer = document.createElement('canvas');
+        const edgeLayer = document.createElement('canvas');
+        colorLayer.width = width;
+        colorLayer.height = height;
+        edgeLayer.width = width;
+        edgeLayer.height = height;
 
-        // --- Layer 2: Texture (Noise) ---
-        applyTexture(width, height);
+        const colorCtx = colorLayer.getContext('2d');
+        const edgeCtx = edgeLayer.getContext('2d');
 
-        // --- Layer 3: Edges (Sketch) ---
-        // Create a temp canvas for edge detection
-        const edgeCanvas = document.createElement('canvas');
-        edgeCanvas.width = width;
-        edgeCanvas.height = height;
-        const edgeCtx = edgeCanvas.getContext('2d');
-
-        // Draw original
+        // --- Step 1: Edge Detection (The Sketch) ---
+        // Draw image to edge layer
         edgeCtx.drawImage(img, 0, 0, width, height);
         
-        // Draw offset inverted version to find edges (Difference of Gaussians approx)
+        // Apply heavy edge detection simulation
+        // 1. Grayscale & Contrast
+        edgeCtx.filter = 'grayscale(100%) contrast(300%)';
+        edgeCtx.drawImage(img, 0, 0, width, height);
+        
+        // 2. Detect edges using difference
         edgeCtx.globalCompositeOperation = 'difference';
-        edgeCtx.drawImage(img, 2, 2, width, height);
+        edgeCtx.drawImage(img, 2, 2, width, height); // Slight offset
         
-        // Invert the result to get dark edges on white background
+        // 3. Invert and threshold to get dark lines on white
         edgeCtx.globalCompositeOperation = 'source-over';
-        edgeCtx.filter = 'grayscale(1) invert(1) contrast(5)';
-        // We need to re-draw the difference result to apply the filter, 
-        // effectively "baking" the filter into the pixel data.
-        // But context.filter applies to *drawing*, not *existing* pixels directly without redraw.
-        // So we draw the edgeCanvas onto ITSELF (or another temp) to apply filter?
-        // Easier: Draw the edgeCanvas onto the MAIN canvas with the filter applied.
-        
+        edgeCtx.filter = 'grayscale(100%) invert(100%) contrast(1000%) brightness(1.5)';
+        // Redraw to apply filter
+        edgeCtx.drawImage(edgeLayer, 0, 0);
+        edgeCtx.filter = 'none'; // Reset filter
+
+        // --- Step 2: Color Simplification (Messy Coloring) ---
+        // Draw resized image (pixelated) to blur details
+        // We simulate "big strokes" by drawing small then scaling up
+        const smallCanvas = document.createElement('canvas');
+        const sWidth = width / 8; // Pixelate factor
+        const sHeight = height / 8;
+        smallCanvas.width = sWidth;
+        smallCanvas.height = sHeight;
+        const sCtx = smallCanvas.getContext('2d');
+        sCtx.drawImage(img, 0, 0, sWidth, sHeight);
+
+        // Quantize colors (limit palette) logic would go here, 
+        // but for performance in JS without heavy loops, we rely on CSS contrast/saturation
+        // to "pop" the colors and reduce gradients.
+        colorCtx.filter = 'saturate(200%) contrast(150%) blur(3px)';
+        colorCtx.drawImage(smallCanvas, 0, 0, sWidth, sHeight, -5, -5, width + 10, height + 10); 
+        // Draw slightly larger to bleed over edges
+
+        // --- Step 3: Composite ---
+        // 1. Draw Paper Texture (White background first)
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, width, height);
+
+        // 2. Draw Color Layer (Multiplied to look like wax)
         ctx.globalCompositeOperation = 'multiply';
-        ctx.filter = 'grayscale(1) invert(1) contrast(5) brightness(1.2)'; 
-        // Brightness 1.2 to remove faint gray noise, keep strong black edges
-        ctx.drawImage(edgeCanvas, 0, 0);
-        
-        // Reset context
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.filter = 'none';
-        
-        // Apply CSS filter for final wobble
+        ctx.drawImage(colorLayer, 0, 0);
+
+        // 3. Draw Edge Layer (The sketch lines)
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.drawImage(edgeLayer, 0, 0);
+
+        // 4. Add Paper Texture Noise
+        applyTexture(width, height);
+
+        // 5. Final CSS Wobble (Visual only)
         canvas.style.filter = 'url(#crayon-filter)';
+
+        // Reset Composite
+        ctx.globalCompositeOperation = 'source-over';
     }
 
     function applyTexture(w, h) {
