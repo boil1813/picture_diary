@@ -213,26 +213,71 @@ canvas {
     background-position: -1px -1px; /* Align grid lines */
 }
 
-/* The input area */
+/* The text section container */
+.text-section {
+    position: relative;
+    width: 524px; /* 13 columns * 40px + borders */
+    margin: 0 auto 20px auto;
+    min-height: 404px; /* 10 rows * 40px + borders */
+    background-color: #fff;
+    border: 2px solid var(--line-color);
+    /* Grid lines background */
+    background-image: 
+        linear-gradient(var(--line-color) 1px, transparent 1px),
+        linear-gradient(90deg, var(--line-color) 1px, transparent 1px);
+    background-size: 40px 40px;
+    background-position: -1px -1px;
+}
+
+/* The visual text renderer (Grid of cells) */
+#diary-grid-display {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1; /* Below textarea */
+    pointer-events: none;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+}
+
+.grid-cell {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'SamdungDaeHan', cursive;
+    font-size: 24px;
+    color: var(--text-color);
+    width: 40px;
+    height: 40px;
+    /* border: 1px solid red; debug */
+}
+
+/* The input area overlay */
 textarea {
-    width: 520px;
-    height: 400px;
+    position: relative;
+    z-index: 2; /* On top to receive input */
+    width: 100%;
+    height: 100%;
+    min-height: 400px;
     background: transparent;
     border: none;
     outline: none;
     
-    font-family: 'SamdungDaeHan', cursive;
-    font-size: 28px;
-    line-height: 40px;
-    letter-spacing: 12px;
-    padding: 5px 0 0 10px;
+    /* Monospace font settings to approximate grid spacing for correct cursor position */
+    font-family: monospace; 
+    font-size: 20px; 
+    line-height: 40px; 
+    letter-spacing: 14.5px; /* Tuned for 40px width approx */
+    padding: 0; 
     margin: 0;
     
-    color: var(--text-color);
-    caret-color: var(--accent-color);
+    color: transparent; /* Hide real text */
+    caret-color: var(--accent-color); /* Show cursor */
     resize: none;
     overflow-y: hidden;
-    white-space: pre-wrap;
+    white-space: pre-wrap; 
     word-break: break-all;
     display: block;
 }

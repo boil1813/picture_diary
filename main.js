@@ -144,6 +144,46 @@ function init() {
     canvas.ontouchmove = doDraw;
     canvas.ontouchend = stopDraw;
 
+    // --- Diary Text Sync ---
+    const gridDisplay = document.getElementById('diary-grid-display');
+    const MAX_COLS = 13;
+
+    function syncTextToGrid() {
+        if (!diaryText || !gridDisplay) return;
+        const text = diaryText.value;
+        gridDisplay.innerHTML = '';
+        
+        let col = 0;
+        const chars = Array.from(text);
+
+        chars.forEach(char => {
+            const cell = document.createElement('div');
+            cell.className = 'grid-cell';
+            
+            if (char === '\n') {
+                const remaining = MAX_COLS - col;
+                for (let i = 0; i < remaining; i++) {
+                    const filler = document.createElement('div');
+                    filler.className = 'grid-cell';
+                    gridDisplay.appendChild(filler);
+                }
+                col = 0;
+                return;
+            }
+            
+            cell.textContent = char;
+            gridDisplay.appendChild(cell);
+            
+            col++;
+            if (col >= MAX_COLS) col = 0;
+        });
+    }
+
+    if (diaryText) {
+        diaryText.oninput = syncTextToGrid;
+        // Initial sync? No text usually.
+    }
+
     // --- Save Logic ---
     if (saveBtn) {
         saveBtn.onclick = () => {
