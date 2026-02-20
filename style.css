@@ -1,13 +1,35 @@
+@font-face {
+    font-family: 'SamdungDaeHan';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408@1.0/YoonChildfundkoreaDaeHan.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'SamdungMinGuk';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408@1.0/YoonChildfundkoreaMinGuk.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'SamdungManSeh';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408@1.0/YoonChildfundkoreaManSeh.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+}
+
 :root {
     --bg-color: #f7f3e8; /* Old paper color */
     --line-color: #b0c4de; /* Notebook line color */
     --text-color: #333;
     --border-color: #555;
     --accent-color: #ff6b6b; /* Crayon red */
+    --font-primary: 'SamdungDaeHan', cursive;
 }
 
 body {
-    font-family: 'Gaegu', cursive;
+    font-family: var(--font-primary);
     background-color: #fff9e6; /* Soft yellow background */
     display: flex;
     justify-content: center;
@@ -126,7 +148,7 @@ textarea {
     background: transparent;
     border: none;
     outline: none;
-    font-family: 'Gaegu', cursive;
+    font-family: var(--font-primary);
     font-size: 1.5rem;
     line-height: 2rem; /* Sync with background lines */
     padding: 0 10px;
@@ -143,7 +165,7 @@ textarea {
 }
 
 button {
-    font-family: 'Gaegu', cursive;
+    font-family: var(--font-primary);
     font-size: 1.2rem;
     padding: 10px 20px;
     border: 2px solid #333;
