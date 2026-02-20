@@ -194,19 +194,30 @@ document.addEventListener('DOMContentLoaded', () => {
         // Draw the processed image from the visible canvas
         exportCtx.drawImage(canvas, padding, headerHeight + padding);
 
-        // 4. Draw Text Section with Lines
+        // 4. Draw Text Section with Grid (Monun Paper)
         const textStartY = headerHeight + imageHeight + padding + 60;
-        const lineHeight = 32; 
-        const maxLines = 12;
+        const gridSize = 40; 
+        const maxRows = 10;
+        const maxCols = Math.floor(imageWidth / gridSize);
+        const actualTextWidth = maxCols * gridSize;
 
         exportCtx.strokeStyle = '#b0c4de';
         exportCtx.lineWidth = 1;
 
-        for (let i = 0; i < maxLines; i++) {
-            const y = textStartY + (i * lineHeight);
+        // Draw horizontal lines
+        for (let i = 0; i <= maxRows; i++) {
+            const y = textStartY + (i * gridSize);
             exportCtx.beginPath();
             exportCtx.moveTo(padding, y);
-            exportCtx.lineTo(exportCanvas.width - padding, y);
+            exportCtx.lineTo(padding + actualTextWidth, y);
+            exportCtx.stroke();
+        }
+        // Draw vertical lines
+        for (let j = 0; j <= maxCols; j++) {
+            const x = padding + (j * gridSize);
+            exportCtx.beginPath();
+            exportCtx.moveTo(x, textStartY);
+            exportCtx.lineTo(x, textStartY + (maxRows * gridSize));
             exportCtx.stroke();
         }
 
@@ -216,12 +227,19 @@ document.addEventListener('DOMContentLoaded', () => {
         exportCtx.textAlign = 'left';
         
         const textLines = diaryText.split('\n');
-        let currentY = textStartY - 8; 
         
-        textLines.forEach((line, index) => {
-            if (index < maxLines) {
-                exportCtx.fillText(line, padding + 10, currentY);
-                currentY += lineHeight;
+        textLines.forEach((line, rowIndex) => {
+            if (rowIndex < maxRows) {
+                const chars = line.split('');
+                chars.forEach((char, colIndex) => {
+                    if (colIndex < maxCols) {
+                        // Position text in the center of the grid box
+                        const x = padding + (colIndex * gridSize) + (gridSize / 2);
+                        const y = textStartY + (rowIndex * gridSize) + (gridSize / 2) + 8; // Small adjustment for baseline
+                        exportCtx.textAlign = 'center';
+                        exportCtx.fillText(char, x, y);
+                    }
+                });
             }
         });
 

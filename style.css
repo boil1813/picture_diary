@@ -130,32 +130,36 @@ canvas {
 
 .text-section {
     position: relative;
-    min-height: 200px;
-    background-color: transparent;
-    border: 1px solid var(--line-color);
+    min-height: 400px;
+    background-color: #fff;
+    border: 2px solid var(--line-color);
     padding: 0;
-    font-size: 1.5rem;
-    line-height: 2rem; /* Should match the line height of the background */
-    background-image: linear-gradient(transparent 1.9rem, var(--line-color) 1.9rem);
-    background-size: 100% 2rem;
+    /* Monun Paper (Grid) Background */
+    background-image: 
+        linear-gradient(var(--line-color) 1px, transparent 1px),
+        linear-gradient(90deg, var(--line-color) 1px, transparent 1px);
+    background-size: 40px 40px;
+    background-position: -1px -1px;
     margin-bottom: 20px;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
 }
 
 textarea {
     width: 100%;
     height: 100%;
-    min-height: 200px; /* Match section min-height */
+    min-height: 400px;
     background: transparent;
     border: none;
     outline: none;
     font-family: var(--font-primary);
-    font-size: 1.5rem;
-    line-height: 2rem; /* Sync with background lines */
-    padding: 0 10px;
+    font-size: 24px;
+    line-height: 40px; /* Match grid size */
+    letter-spacing: 12px; /* Adjust to fit boxes roughly */
+    padding: 0 5px;
     resize: none;
     color: var(--text-color);
-    /* Improve alignment */
-    margin-top: 0.1rem; 
+    margin-top: 0;
+    overflow-y: hidden;
 }
 
 .diary-footer {
