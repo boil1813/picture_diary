@@ -130,15 +130,88 @@ document.addEventListener('DOMContentLoaded', () => {
         canvas.style.filter = 'none';
     });
 
-    // Save (Simple implementation)
+    // Save (Combined Image and Text)
     saveBtn.addEventListener('click', () => {
+        const diaryText = document.getElementById('diary-text').value;
+        const diaryDate = document.getElementById('diary-date').value;
+        const weatherSelect = document.getElementById('weather-select');
+        const weatherText = weatherSelect.options[weatherSelect.selectedIndex].text;
+
+        const exportCanvas = document.createElement('canvas');
+        const exportCtx = exportCanvas.getContext('2d');
+
+        const padding = 40;
+        const headerHeight = 120;
+        const imageWidth = canvas.width;
+        const imageHeight = canvas.height;
+        const textSectionHeight = 400; 
+        
+        exportCanvas.width = imageWidth + (padding * 2);
+        exportCanvas.height = headerHeight + imageHeight + textSectionHeight + (padding * 2);
+
+        // 1. Draw Background (Paper color)
+        exportCtx.fillStyle = '#f7f3e8';
+        exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+
+        // 2. Draw Header Area
+        exportCtx.font = `bold 40px 'SamdungDaeHan'`;
+        exportCtx.fillStyle = '#ff6b6b';
+        exportCtx.textAlign = 'center';
+        exportCtx.fillText('그림일기', exportCanvas.width / 2, padding + 40);
+
+        // Draw Date and Weather
+        exportCtx.font = `24px 'SamdungDaeHan'`;
+        exportCtx.fillStyle = '#333';
+        exportCtx.textAlign = 'left';
+        exportCtx.fillText(`날짜: ${diaryDate || '____년 __월 __일'}`, padding, padding + 80);
+        exportCtx.textAlign = 'right';
+        exportCtx.fillText(`날씨: ${weatherText}`, exportCanvas.width - padding, padding + 80);
+
+        // 3. Draw Processed Image Box
+        exportCtx.fillStyle = '#fff';
+        exportCtx.fillRect(padding - 5, headerHeight + padding - 5, imageWidth + 10, imageHeight + 10);
+        exportCtx.strokeStyle = '#333';
+        exportCtx.lineWidth = 3;
+        exportCtx.strokeRect(padding - 5, headerHeight + padding - 5, imageWidth + 10, imageHeight + 10);
+        
+        // Draw the processed image from the visible canvas
+        exportCtx.drawImage(canvas, padding, headerHeight + padding);
+
+        // 4. Draw Text Section with Lines
+        const textStartY = headerHeight + imageHeight + padding + 60;
+        const lineHeight = 32; 
+        const maxLines = 12;
+
+        exportCtx.strokeStyle = '#b0c4de';
+        exportCtx.lineWidth = 1;
+
+        for (let i = 0; i < maxLines; i++) {
+            const y = textStartY + (i * lineHeight);
+            exportCtx.beginPath();
+            exportCtx.moveTo(padding, y);
+            exportCtx.lineTo(exportCanvas.width - padding, y);
+            exportCtx.stroke();
+        }
+
+        // 5. Draw the Diary Content
+        exportCtx.font = `24px 'SamdungDaeHan'`;
+        exportCtx.fillStyle = '#333';
+        exportCtx.textAlign = 'left';
+        
+        const textLines = diaryText.split('\n');
+        let currentY = textStartY - 8; 
+        
+        textLines.forEach((line, index) => {
+            if (index < maxLines) {
+                exportCtx.fillText(line, padding + 10, currentY);
+                currentY += lineHeight;
+            }
+        });
+
+        // 6. Download
         const link = document.createElement('a');
-        link.download = 'my-picture-diary.png';
-        // Note: The CSS filter (SVG displacement) won't be captured by toDataURL 
-        // unless we draw it into the canvas. 
-        // For a simple prototype, saving the canvas 'as is' (without CSS filter effect burned in) 
-        // might be acceptable, or we accept the limitation.
-        link.href = canvas.toDataURL(); 
+        link.download = `그림일기_${diaryDate || '오늘'}.png`;
+        link.href = exportCanvas.toDataURL('image/png');
         link.click();
     });
 });
