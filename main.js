@@ -24,6 +24,7 @@ function init() {
     const saveBtn = document.getElementById('save-btn');
     const resetBtn = document.getElementById('reset-btn'); 
     const diaryText = document.getElementById('diary-text');
+    const brushGuide = document.getElementById('brush-guide');
 
     if (!canvas) return;
     const ctx = canvas.getContext('2d', { willReadFrequently: true }); // optimize for read
@@ -57,6 +58,7 @@ function init() {
                 if (currentTool === 'eraser') currentTool = 'brush';
                 updateUI();
                 updateBrush();
+                updateBrushGuide();
                 document.querySelectorAll('.color-swatch').forEach(el => el.classList.remove('active'));
                 div.classList.add('active');
             };
@@ -68,6 +70,7 @@ function init() {
         if (btnBrush) btnBrush.classList.toggle('active', currentTool === 'brush');
         if (btnEraser) btnEraser.classList.toggle('active', currentTool === 'eraser');
         if (btnFill) btnFill.classList.toggle('active', currentTool === 'fill');
+        updateBrushGuide();
     }
 
     function updateBrush() {
@@ -78,6 +81,23 @@ function init() {
             ctx.lineWidth = brushSize;
             ctx.strokeStyle = brushColor;
         }
+    }
+
+    function updateBrushGuide() {
+        if (!brushGuide) return;
+        
+        if (currentTool === 'fill') {
+            brushGuide.style.display = 'none';
+            return;
+        }
+
+        const rect = canvas.getBoundingClientRect();
+        const scale = rect.width / canvas.width;
+        
+        const size = (currentTool === 'eraser' ? brushSize * 5 : brushSize) * scale;
+        brushGuide.style.width = `${size}px`;
+        brushGuide.style.height = `${size}px`;
+        // Since we want the mouse to be in the center, we'll offset it during mousemove
     }
 
     // --- Flood Fill Logic ---
@@ -206,6 +226,17 @@ function init() {
     };
 
     const doDraw = (e) => {
+        if (brushGuide && currentTool !== 'fill') {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            
+            const guideSize = parseFloat(brushGuide.style.width);
+            brushGuide.style.left = `${(clientX - rect.left) - guideSize/2}px`;
+            brushGuide.style.top = `${(clientY - rect.top) - guideSize/2}px`;
+            brushGuide.style.display = 'block';
+        }
+
         if (!isDrawing) return;
         if (e.type === 'touchmove') e.preventDefault();
         const { x, y } = getCoords(e);
@@ -215,17 +246,45 @@ function init() {
         ctx.moveTo(x, y);
     };
 
-    const stopDraw = () => { isDrawing = false; ctx.beginPath(); };
+    const stopDraw = () => { 
+        isDrawing = false; 
+        ctx.beginPath(); 
+    };
 
     canvas.onmousedown = startDraw;
     canvas.onmousemove = doDraw;
     window.onmouseup = stopDraw;
 
-    canvas.ontouchstart = startDraw;
+    canvas.ontouchstart = (e) => {
+        if (brushGuide) brushGuide.style.display = 'block';
+        startDraw(e);
+    };
     canvas.ontouchmove = doDraw;
-    canvas.ontouchend = stopDraw;
+    canvas.ontouchend = () => {
+        if (brushGuide) brushGuide.style.display = 'none';
+        stopDraw();
+    };
 
-    // --- Diary Text Sync ---
+    canvas.onmouseenter = () => {
+        if (brushGuide && currentTool !== 'fill') {
+            updateBrushGuide();
+            brushGuide.style.display = 'block';
+        }
+    };
+    canvas.onmouseleave = () => {
+        if (brushGuide) brushGuide.style.display = 'none';
+    };
+
+    // Update guide on brush size change
+    if (brushSizeInput) {
+        const originalOnInput = brushSizeInput.oninput;
+        brushSizeInput.oninput = (e) => {
+            originalOnInput(e);
+            updateBrushGuide();
+        };
+    }
+
+    // --- Save Logic ---
     const gridDisplay = document.getElementById('diary-grid-display');
     const MAX_COLS = 13;
 
