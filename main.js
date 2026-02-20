@@ -1,15 +1,190 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // --- Elements ---
     const uploadInput = document.getElementById('image-upload');
+    const uploadTrigger = document.getElementById('btn-upload-trigger');
     const uploadArea = document.getElementById('upload-area');
     const canvas = document.getElementById('drawing-canvas');
     const ctx = canvas.getContext('2d');
     const sourceImage = document.getElementById('source-image');
-    const resetBtn = document.getElementById('reset-btn');
+    
+    // Tools
+    const btnBrush = document.getElementById('tool-brush');
+    const btnEraser = document.getElementById('tool-eraser');
+    const brushSizeInput = document.getElementById('brush-size');
+    const colorPalette = document.getElementById('color-palette');
+    const customColorInput = document.getElementById('custom-color');
+    const btnClear = document.getElementById('btn-clear-canvas');
+    
     const saveBtn = document.getElementById('save-btn');
+    const resetBtn = document.getElementById('reset-btn'); // From footer, keep as "Full Reset" or remove? 
+    // The footer "reset-btn" says "Eraser (Retry)". Let's repurpose it or just use the new "Clear" button. 
+    // The prompt implied adding controls, so I'll rely on the new top controls.
+    // I will hook up the footer button to the same "Clear" logic for consistency.
 
-    // Handle Image Upload
+    // --- State ---
+    let isDrawing = false;
+    let currentTool = 'brush'; // 'brush' or 'eraser'
+    let brushSize = 5;
+    let brushColor = '#000000';
+    let hasContent = false; // To hide/show "Upload Here" text
+
+    // --- Initialization ---
+    function initCanvas() {
+        // Set initial canvas size to match container (default 4:3 roughly)
+        // We need actual pixel dimensions for drawing to not look blurry.
+        // Let's set a standard resolution and scale via CSS.
+        canvas.width = 800;
+        canvas.height = 600;
+        
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height); // White background
+        
+        // Default brush
+        updateBrush();
+    }
+
+    // Generate Color Palette
+    const colors = [
+        '#000000', '#FF3B30', '#FF9500', '#FFCC00', '#4CD964', 
+        '#5AC8FA', '#007AFF', '#5856D6', '#FF2D55', '#8E8E93', 
+        '#6F4E37', '#FFFFFF'
+    ];
+    
+    colors.forEach(color => {
+        const div = document.createElement('div');
+        div.className = 'color-swatch';
+        div.style.backgroundColor = color;
+        div.dataset.color = color;
+        div.addEventListener('click', () => selectColor(color, div));
+        colorPalette.appendChild(div);
+    });
+
+    // Select first color
+    selectColor('#000000', colorPalette.firstChild);
+
+    function selectColor(color, element) {
+        brushColor = color;
+        currentTool = 'brush'; // Switch to brush when color picked
+        updateToolUI();
+        
+        // Highlight UI
+        document.querySelectorAll('.color-swatch').forEach(el => el.classList.remove('active'));
+        if (element) element.classList.add('active');
+        
+        customColorInput.value = color; // Sync picker
+        updateBrush();
+    }
+
+    // --- Event Listeners: Tools ---
+    
+    btnBrush.addEventListener('click', () => {
+        currentTool = 'brush';
+        updateToolUI();
+        updateBrush();
+    });
+
+    btnEraser.addEventListener('click', () => {
+        currentTool = 'eraser';
+        updateToolUI();
+        updateBrush(); // Eraser is just white brush in this simple version? Or composite operation?
+        // Using composite destination-out makes it transparent, revealing background... 
+        // But our background is part of the canvas (white rect). 
+        // So 'eraser' should paint white OR restore the original paper texture?
+        // For simplicity: Paint White if no image, or if image exists... simpler to just Paint White for now.
+        // Better: Use globalCompositeOperation if we want true erasing, but we have a white bg fill.
+    });
+
+    brushSizeInput.addEventListener('input', (e) => {
+        brushSize = e.target.value;
+        updateBrush();
+    });
+
+    customColorInput.addEventListener('input', (e) => {
+        selectColor(e.target.value, null);
+    });
+    
+    btnClear.addEventListener('click', clearCanvas);
+    if (resetBtn) resetBtn.addEventListener('click', clearCanvas);
+
+    uploadTrigger.addEventListener('click', () => uploadInput.click());
     uploadInput.addEventListener('change', handleImageUpload);
-    uploadArea.addEventListener('click', () => uploadInput.click());
+
+    function updateToolUI() {
+        btnBrush.classList.toggle('active', currentTool === 'brush');
+        btnEraser.classList.toggle('active', currentTool === 'eraser');
+    }
+
+    function updateBrush() {
+        ctx.lineWidth = brushSize;
+        if (currentTool === 'eraser') {
+            ctx.strokeStyle = '#ffffff'; 
+        } else {
+            ctx.strokeStyle = brushColor;
+        }
+    }
+
+    function clearCanvas() {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        hasContent = false;
+        uploadArea.style.display = 'flex'; // Show prompt again
+        canvas.style.filter = 'none'; // Remove crayon filter if applied
+    }
+
+    // --- Drawing Logic ---
+    
+    function startDraw(e) {
+        isDrawing = true;
+        hasContent = true;
+        uploadArea.style.display = 'none'; // Hide prompt once we start drawing
+        draw(e);
+    }
+
+    function endDraw() {
+        isDrawing = false;
+        ctx.beginPath(); // Reset path so lines don't connect
+    }
+
+    function draw(e) {
+        if (!isDrawing) return;
+
+        // Get coordinates relative to canvas
+        const rect = canvas.getBoundingClientRect();
+        
+        // Handle Touch vs Mouse
+        let clientX, clientY;
+        if (e.changedTouches) {
+            clientX = e.changedTouches[0].clientX;
+            clientY = e.changedTouches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+
+        const x = (clientX - rect.left) * (canvas.width / rect.width);
+        const y = (clientY - rect.top) * (canvas.height / rect.height);
+
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+    }
+
+    // Mouse Events
+    canvas.addEventListener('mousedown', startDraw);
+    canvas.addEventListener('mouseup', endDraw);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseout', endDraw);
+
+    // Touch Events
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDraw(e); });
+    canvas.addEventListener('touchend', (e) => { e.preventDefault(); endDraw(); });
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); });
+
+
+    // --- Image Processing Logic (Adapted) ---
 
     function handleImageUpload(e) {
         const file = e.target.files[0];
@@ -19,8 +194,8 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.onload = (event) => {
             sourceImage.onload = () => {
                 processImage(sourceImage);
-                uploadArea.style.display = 'none'; // Hide text, show canvas
-                canvas.style.display = 'block';
+                hasContent = true;
+                uploadArea.style.display = 'none';
             };
             sourceImage.src = event.target.result;
         };
@@ -28,22 +203,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function processImage(img) {
-        // 1. Setup Canvas
+        // Keep dimensions, but scale to fit if too huge, or match default canvas
+        // Let's resize canvas to image aspect ratio, but keep within bounds
         const maxWidth = 800;
+        const maxHeight = 600;
         let width = img.width;
         let height = img.height;
         
-        if (width > maxWidth) {
-            const scale = maxWidth / width;
-            width = maxWidth;
-            height = img.height * scale;
+        // Simple scale down
+        if (width > maxWidth || height > maxHeight) {
+            const ratio = Math.min(maxWidth / width, maxHeight / height);
+            width = width * ratio;
+            height = height * ratio;
         }
 
         canvas.width = width;
         canvas.height = height;
-        ctx.clearRect(0, 0, width, height);
+        
+        // Re-apply context settings after resize
+        updateBrush();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
 
-        // Create offscreen canvases for layers
+        // ... Existing Image Processing Code ...
+        
+        // Create offscreen canvases
         const colorLayer = document.createElement('canvas');
         const edgeLayer = document.createElement('canvas');
         colorLayer.width = width;
@@ -54,69 +238,48 @@ document.addEventListener('DOMContentLoaded', () => {
         const colorCtx = colorLayer.getContext('2d');
         const edgeCtx = edgeLayer.getContext('2d');
 
-        // --- Step 1: Edge Detection (The Sketch) ---
-        // Draw image to edge layer
+        // Edge Detection
         edgeCtx.drawImage(img, 0, 0, width, height);
-        
-        // Apply heavy edge detection simulation
-        // 1. Grayscale & Contrast
         edgeCtx.filter = 'grayscale(100%) contrast(300%)';
         edgeCtx.drawImage(img, 0, 0, width, height);
-        
-        // 2. Detect edges using difference
         edgeCtx.globalCompositeOperation = 'difference';
-        edgeCtx.drawImage(img, 2, 2, width, height); // Slight offset
-        
-        // 3. Invert and threshold to get dark lines on white
+        edgeCtx.drawImage(img, 2, 2, width, height);
         edgeCtx.globalCompositeOperation = 'source-over';
         edgeCtx.filter = 'grayscale(100%) invert(100%) contrast(1000%) brightness(1.5)';
-        // Redraw to apply filter
         edgeCtx.drawImage(edgeLayer, 0, 0);
-        edgeCtx.filter = 'none'; // Reset filter
+        edgeCtx.filter = 'none';
 
-        // --- Step 2: Color Simplification (Messy Coloring) ---
-        // Draw resized image (pixelated) to blur details
-        // We simulate "big strokes" by drawing small then scaling up
+        // Color Simplification
         const smallCanvas = document.createElement('canvas');
-        const sWidth = width / 8; // Pixelate factor
+        const sWidth = width / 8;
         const sHeight = height / 8;
         smallCanvas.width = sWidth;
         smallCanvas.height = sHeight;
         const sCtx = smallCanvas.getContext('2d');
         sCtx.drawImage(img, 0, 0, sWidth, sHeight);
 
-        // Quantize colors (limit palette) logic would go here, 
-        // but for performance in JS without heavy loops, we rely on CSS contrast/saturation
-        // to "pop" the colors and reduce gradients.
         colorCtx.filter = 'saturate(200%) contrast(150%) blur(3px)';
         colorCtx.drawImage(smallCanvas, 0, 0, sWidth, sHeight, -5, -5, width + 10, height + 10); 
-        // Draw slightly larger to bleed over edges
 
-        // --- Step 3: Composite ---
-        // 1. Draw Paper Texture (White background first)
+        // Composite to Main Canvas
         ctx.fillStyle = '#fff';
         ctx.fillRect(0, 0, width, height);
 
-        // 2. Draw Color Layer (Multiplied to look like wax)
         ctx.globalCompositeOperation = 'multiply';
         ctx.drawImage(colorLayer, 0, 0);
-
-        // 3. Draw Edge Layer (The sketch lines)
-        ctx.globalCompositeOperation = 'multiply';
         ctx.drawImage(edgeLayer, 0, 0);
 
-        // 4. Add Paper Texture Noise
+        // Noise
         applyTexture(width, height);
 
-        // 5. Final CSS Wobble (Visual only)
-        canvas.style.filter = 'url(#crayon-filter)';
-
-        // Reset Composite
+        // Reset Composite for future drawing
         ctx.globalCompositeOperation = 'source-over';
+        
+        // Apply CSS Filter for visual effect
+        canvas.style.filter = 'url(#crayon-filter)';
     }
 
     function applyTexture(w, h) {
-        // Create a temporary canvas for noise
         const noiseCanvas = document.createElement('canvas');
         noiseCanvas.width = w;
         noiseCanvas.height = h;
@@ -126,61 +289,38 @@ document.addEventListener('DOMContentLoaded', () => {
         const buffer = new Uint32Array(imageData.data.buffer);
         
         for (let i = 0; i < buffer.length; i++) {
-            if (Math.random() < 0.1) { // 10% noise
-                buffer[i] = 0x10000000; // Faint black noise
+            if (Math.random() < 0.1) { 
+                buffer[i] = 0x10000000; 
             }
         }
         
         nCtx.putImageData(imageData, 0, 0);
-        
         ctx.globalCompositeOperation = 'multiply';
         ctx.drawImage(noiseCanvas, 0, 0);
         ctx.globalCompositeOperation = 'source-over';
     }
 
-    // Reset
-    resetBtn.addEventListener('click', () => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        canvas.style.display = 'none';
-        uploadArea.style.display = 'flex';
-        uploadInput.value = '';
-        canvas.style.filter = 'none';
-    });
-
-    // Textarea Grid Sync Logic
+    // --- Diary Text Sync (Keep existing) ---
     const diaryText = document.getElementById('diary-text');
     const gridDisplay = document.getElementById('diary-grid-display');
     const MAX_COLS = 13;
     const GRID_SIZE = 40;
 
     diaryText.addEventListener('input', syncTextToGrid);
-    
-    // Initial sync
     syncTextToGrid();
 
     function syncTextToGrid() {
         const text = diaryText.value;
-        gridDisplay.innerHTML = ''; // Clear existing
-        
+        gridDisplay.innerHTML = '';
         let col = 0;
         let row = 0;
-        
-        // Split by characters to handle emojis correctly (if possible), 
-        // but simple split is okay for MVP. Array.from handles surrogate pairs better.
         const chars = Array.from(text);
 
         chars.forEach(char => {
-            // Create cell
             const cell = document.createElement('div');
             cell.className = 'grid-cell';
             
-            // Position cell absolutely? No, CSS Grid handles layout if we just append divs.
-            // BUT, newlines break the flow if we just append divs linearly in a grid that wraps automatically.
-            // If we use grid-template-columns, divs will fill row 1 then row 2.
-            // So for a newline, we need to insert "empty" filler cells until the end of the row.
-            
             if (char === '\n') {
-                // Fill remaining cells in current row
                 const remaining = MAX_COLS - col;
                 for (let i = 0; i < remaining; i++) {
                     const filler = document.createElement('div');
@@ -189,10 +329,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 col = 0;
                 row++;
-                return; // Don't render the newline char itself
+                return;
             }
             
-            // Regular char
             cell.textContent = char;
             gridDisplay.appendChild(cell);
             
@@ -204,7 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Save (Combined Image and Text)
+    // --- Save Functionality ---
     saveBtn.addEventListener('click', () => {
         const diaryContent = diaryText.value;
         const diaryDate = document.getElementById('diary-date').value;
@@ -218,24 +357,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const headerHeight = 120;
         const imageWidth = canvas.width;
         const imageHeight = canvas.height;
-        // Calculate text height based on rows
-        // We can estimate rows from the sync logic or just use a fixed minimum
         const textSectionHeight = Math.max(400, (Math.ceil(diaryContent.length / MAX_COLS) + 5) * GRID_SIZE); 
         
         exportCanvas.width = imageWidth + (padding * 2);
         exportCanvas.height = headerHeight + imageHeight + textSectionHeight + (padding * 2);
 
-        // 1. Draw Background (Paper color)
+        // Background
         exportCtx.fillStyle = '#f7f3e8';
         exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
 
-        // 2. Draw Header Area
+        // Header
         exportCtx.font = `bold 40px 'SamdungDaeHan'`;
         exportCtx.fillStyle = '#ff6b6b';
         exportCtx.textAlign = 'center';
         exportCtx.fillText('그림일기', exportCanvas.width / 2, padding + 40);
 
-        // Draw Date and Weather
         exportCtx.font = `24px 'SamdungDaeHan'`;
         exportCtx.fillStyle = '#333';
         exportCtx.textAlign = 'left';
@@ -243,29 +379,26 @@ document.addEventListener('DOMContentLoaded', () => {
         exportCtx.textAlign = 'right';
         exportCtx.fillText(`날씨: ${weatherText}`, exportCanvas.width - padding, padding + 80);
 
-        // 3. Draw Processed Image Box
+        // Image Frame
         exportCtx.fillStyle = '#fff';
         exportCtx.fillRect(padding - 5, headerHeight + padding - 5, imageWidth + 10, imageHeight + 10);
         exportCtx.strokeStyle = '#333';
         exportCtx.lineWidth = 3;
         exportCtx.strokeRect(padding - 5, headerHeight + padding - 5, imageWidth + 10, imageHeight + 10);
         
-        // Draw the processed image from the visible canvas
+        // Draw Main Canvas Content
         exportCtx.drawImage(canvas, padding, headerHeight + padding);
 
-        // 4. Draw Text Section with Grid (Monun Paper)
+        // Text Grid
         const textStartY = headerHeight + imageHeight + padding + 60;
-        // Use fixed MAX_COLS from UI
-        // Calculate centered start X for grid
         const gridWidth = MAX_COLS * GRID_SIZE;
-        const gridStartX = (exportCanvas.width - gridWidth) / 2; // Center the grid
+        const gridStartX = (exportCanvas.width - gridWidth) / 2;
         
         const rowsToDraw = Math.floor(textSectionHeight / GRID_SIZE);
 
         exportCtx.strokeStyle = '#b0c4de';
         exportCtx.lineWidth = 1;
 
-        // Draw horizontal lines
         for (let i = 0; i <= rowsToDraw; i++) {
             const y = textStartY + (i * GRID_SIZE);
             exportCtx.beginPath();
@@ -273,7 +406,6 @@ document.addEventListener('DOMContentLoaded', () => {
             exportCtx.lineTo(gridStartX + gridWidth, y);
             exportCtx.stroke();
         }
-        // Draw vertical lines
         for (let j = 0; j <= MAX_COLS; j++) {
             const x = gridStartX + (j * GRID_SIZE);
             exportCtx.beginPath();
@@ -282,13 +414,12 @@ document.addEventListener('DOMContentLoaded', () => {
             exportCtx.stroke();
         }
 
-        // 5. Draw the Diary Content
+        // Text Content
         exportCtx.font = `24px 'SamdungDaeHan'`;
         exportCtx.fillStyle = '#333';
-        exportCtx.textAlign = 'center'; // Center in cell
+        exportCtx.textAlign = 'center';
         exportCtx.textBaseline = 'middle';
         
-        // Re-run the sync logic purely for position calculation
         let col = 0;
         let row = 0;
         const chars = Array.from(diaryContent);
@@ -299,13 +430,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 row++;
                 return;
             }
-
             if (row < rowsToDraw) {
                 const x = gridStartX + (col * GRID_SIZE) + (GRID_SIZE / 2);
-                const y = textStartY + (row * GRID_SIZE) + (GRID_SIZE / 2) + 2; // +2 for visual centering
+                const y = textStartY + (row * GRID_SIZE) + (GRID_SIZE / 2) + 2;
                 exportCtx.fillText(char, x, y);
             }
-            
             col++;
             if (col >= MAX_COLS) {
                 col = 0;
@@ -313,10 +442,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // 6. Download
         const link = document.createElement('a');
         link.download = `그림일기_${diaryDate || '오늘'}.png`;
         link.href = exportCanvas.toDataURL('image/png');
         link.click();
     });
+
+    // Initialize
+    initCanvas();
 });

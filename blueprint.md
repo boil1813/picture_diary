@@ -12,6 +12,14 @@ The goal is to evoke a sense of nostalgia and childhood innocence through the UI
     -   Users upload an image file.
     -   The application applies filters (SVG/Canvas based) to simulate a crayon or wax pastel texture.
     -   Techniques: Edge detection, color simplification, noise overlay, and displacement mapping.
+-   **Drawing Capabilities (New):**
+    -   **Interactive Canvas:** Users can draw directly on the canvas, either on a blank sheet or over an uploaded photo.
+    -   **Tools:**
+        -   Brush tool with variable size.
+        -   Color picker (preset "crayon" colors).
+        -   Eraser tool.
+        -   Clear canvas button.
+    -   **Integration:** Drawing blends with the diary aesthetic.
 -   **Diary Entry:**
     -   A text area for writing the diary content.
     -   Uses a handwriting-style font (e.g., 'Gaegu' or 'Gamja Flower' from Google Fonts).
