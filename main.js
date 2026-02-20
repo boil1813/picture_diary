@@ -533,7 +533,7 @@ function processImage(img, canvas, ctx, uploadArea) {
     ctx.restore();
     
     // 4. Apply Texture Filter
-    canvas.style.filter = 'url(#crayon-filter)';
+    // canvas.style.filter = 'url(#crayon-filter)'; // Removed to keep user drawing clean
     
     // Save history after processing
     // Note: Calling saveHistory() here might be redundant if the caller does it, 
