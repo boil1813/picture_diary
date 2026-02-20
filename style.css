@@ -213,56 +213,28 @@ canvas {
     background-position: -1px -1px; /* Align grid lines */
 }
 
-/* The visual text renderer (Grid of cells) */
-#diary-grid-display {
-    position: absolute;
-    top: 0; left: 0;
-    width: 520px; /* Exact multiple */
-    height: 100%;
-    z-index: 1; /* Below textarea */
-    pointer-events: none; /* Let clicks pass through to textarea */
-    display: grid;
-    grid-template-columns: repeat(13, 40px); /* 13 columns fixed */
-    grid-auto-rows: 40px; /* 40px height */
-}
-
-.grid-cell {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-family: var(--font-primary);
-    font-size: 24px;
-    color: var(--text-color);
-    width: 40px;
-    height: 40px;
-    /* Debug border: border: 1px solid red; */
-}
-
-/* The invisible input area */
+/* The input area */
 textarea {
-    position: relative;
-    z-index: 2; /* On top */
-    width: 520px; /* Match grid width */
-    height: 100%;
-    min-height: 400px;
-    background: transparent !important; /* Force transparency */
+    width: 520px;
+    height: 400px;
+    background: transparent;
     border: none;
     outline: none;
     
-    /* Font settings to approximate grid spacing for cursor */
-    font-family: monospace; 
-    font-size: 20px; /* Adjust to match width */
-    line-height: 40px; /* Match row height */
-    letter-spacing: 14.5px; /* Tuned for 40px width (approx) */
-    padding: 0; /* Remove padding to align */
+    font-family: 'SamdungDaeHan', cursive;
+    font-size: 28px;
+    line-height: 40px;
+    letter-spacing: 12px;
+    padding: 5px 0 0 10px;
     margin: 0;
     
-    color: transparent; /* Hide real text */
-    caret-color: red; /* Show cursor */
+    color: var(--text-color);
+    caret-color: var(--accent-color);
     resize: none;
     overflow-y: hidden;
-    white-space: pre-wrap; /* Wrap text */
-    word-break: break-all; /* Break words anywhere to fit grid */
+    white-space: pre-wrap;
+    word-break: break-all;
+    display: block;
 }
 
 .diary-footer {

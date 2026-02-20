@@ -1,15 +1,15 @@
-document.addEventListener('DOMContentLoaded', () => {
-    // --- Elements ---
+// --- Global State ---
+let isDrawing = false;
+let currentTool = 'brush';
+let brushSize = 5;
+let brushColor = '#000000';
+
+// --- Initialization ---
+function init() {
+    const canvas = document.getElementById('drawing-canvas');
     const uploadInput = document.getElementById('image-upload');
     const uploadTrigger = document.getElementById('btn-upload-trigger');
     const uploadArea = document.getElementById('upload-area');
-    const canvas = document.getElementById('drawing-canvas');
-    // Safety check for canvas
-    if (!canvas) {
-        console.error("Canvas element not found!");
-        return;
-    }
-    const ctx = canvas.getContext('2d');
     const sourceImage = document.getElementById('source-image');
     
     // Tools
@@ -22,30 +22,20 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const saveBtn = document.getElementById('save-btn');
     const resetBtn = document.getElementById('reset-btn'); 
+    const diaryText = document.getElementById('diary-text');
 
-    // --- State ---
-    let isDrawing = false;
-    let currentTool = 'brush'; // 'brush' or 'eraser'
-    let brushSize = 5;
-    let brushColor = '#000000';
-    let hasContent = false; // To hide/show "Upload Here" text
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
 
-    // --- Initialization ---
-    function initCanvas() {
-        // Set initial canvas size to match container (default 4:3 roughly)
-        canvas.width = 800;
-        canvas.height = 600;
-        
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height); // White background
-        
-        // Default brush
-        updateBrush();
-    }
+    // Set initial canvas size
+    canvas.width = 800;
+    canvas.height = 600;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
 
-    // Generate Color Palette
+    // --- Color Palette ---
     const colors = [
         '#000000', '#FF3B30', '#FF9500', '#FFCC00', '#4CD964', 
         '#5AC8FA', '#007AFF', '#5856D6', '#FF2D55', '#8E8E93', 
@@ -53,437 +43,238 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
 
     if (colorPalette) {
+        colorPalette.innerHTML = '';
         colors.forEach(color => {
             const div = document.createElement('div');
             div.className = 'color-swatch';
             div.style.backgroundColor = color;
-            div.dataset.color = color;
-            div.addEventListener('click', () => selectColor(color, div));
+            if (color === brushColor) div.classList.add('active');
+            div.onclick = () => {
+                brushColor = color;
+                currentTool = 'brush';
+                updateUI();
+                updateBrush();
+                document.querySelectorAll('.color-swatch').forEach(el => el.classList.remove('active'));
+                div.classList.add('active');
+            };
             colorPalette.appendChild(div);
         });
-
-        // Select first color
-        if (colorPalette.firstChild) {
-            selectColor('#000000', colorPalette.firstChild);
-        }
     }
 
-    function selectColor(color, element) {
-        brushColor = color;
-        currentTool = 'brush'; // Switch to brush when color picked
-        updateToolUI();
-        
-        // Highlight UI
-        document.querySelectorAll('.color-swatch').forEach(el => el.classList.remove('active'));
-        if (element) element.classList.add('active');
-        
-        if (customColorInput) customColorInput.value = color; // Sync picker
-        updateBrush();
-    }
-
-    // --- Event Listeners: Tools ---
-
-    if (btnBrush) {
-        btnBrush.addEventListener('click', () => {
-            currentTool = 'brush';
-            updateToolUI();
-            updateBrush();
-        });
-    }
-
-    if (btnEraser) {
-        btnEraser.addEventListener('click', () => {
-            currentTool = 'eraser';
-            updateToolUI();
-            updateBrush(); 
-        });
-    }
-
-    if (brushSizeInput) {
-        brushSizeInput.addEventListener('input', (e) => {
-            brushSize = e.target.value;
-            updateBrush();
-        });
-    }
-
-    if (customColorInput) {
-        customColorInput.addEventListener('input', (e) => {
-            selectColor(e.target.value, null);
-        });
-    }
-
-    if (btnClear) btnClear.addEventListener('click', clearCanvas);
-    if (resetBtn) resetBtn.addEventListener('click', clearCanvas);
-
-    if (uploadTrigger) uploadTrigger.addEventListener('click', () => uploadInput.click());
-    if (uploadInput) uploadInput.addEventListener('change', handleImageUpload);
-
-    function updateToolUI() {
+    function updateUI() {
         if (btnBrush) btnBrush.classList.toggle('active', currentTool === 'brush');
         if (btnEraser) btnEraser.classList.toggle('active', currentTool === 'eraser');
     }
 
     function updateBrush() {
         ctx.lineWidth = brushSize;
-        if (currentTool === 'eraser') {
-            ctx.strokeStyle = '#ffffff'; 
-        } else {
-            ctx.strokeStyle = brushColor;
-        }
+        ctx.strokeStyle = currentTool === 'eraser' ? '#ffffff' : brushColor;
     }
 
-    function clearCanvas() {
+    // --- Event Listeners ---
+    if (btnBrush) btnBrush.onclick = () => { currentTool = 'brush'; updateUI(); updateBrush(); };
+    if (btnEraser) btnEraser.onclick = () => { currentTool = 'eraser'; updateUI(); updateBrush(); };
+    if (brushSizeInput) brushSizeInput.oninput = (e) => { brushSize = e.target.value; updateBrush(); };
+    if (customColorInput) customColorInput.oninput = (e) => { brushColor = e.target.value; currentTool = 'brush'; updateUI(); updateBrush(); };
+    
+    const clearAction = () => {
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        hasContent = false;
-        if (uploadArea) uploadArea.style.display = 'flex'; // Show prompt again
-        canvas.style.filter = 'none'; // Remove crayon filter if applied
+        if (uploadArea) uploadArea.style.display = 'flex';
+        canvas.style.filter = 'none';
+    };
+    if (btnClear) btnClear.onclick = clearAction;
+    if (resetBtn) resetBtn.onclick = clearAction;
+
+    if (uploadTrigger) uploadTrigger.onclick = () => uploadInput.click();
+    if (uploadInput) {
+        uploadInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                sourceImage.onload = () => {
+                    processImage(sourceImage, canvas, ctx, uploadArea);
+                };
+                sourceImage.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        };
     }
 
     // --- Drawing Logic ---
-
-    function startDraw(e) {
-        isDrawing = true;
-        hasContent = true;
-        if (uploadArea) uploadArea.style.display = 'none'; // Hide prompt once we start drawing
-        
-        updateBrush(); // Ensure current settings are applied
-        
-        // Calculate coordinates
-        const coords = getCoords(e);
-        const x = coords.x;
-        const y = coords.y;
-
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x, y); // Draw a dot
-        ctx.stroke();
-        
-        // Start path for dragging
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-    }
-
-    function endDraw() {
-        isDrawing = false;
-        ctx.beginPath(); // Reset path so lines don't connect
-    }
-
-    function draw(e) {
-        if (!isDrawing) return;
-
-        const coords = getCoords(e);
-        const x = coords.x;
-        const y = coords.y;
-
-        ctx.lineTo(x, y);
-        ctx.stroke();
-        
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-    }
-
     function getCoords(e) {
         const rect = canvas.getBoundingClientRect();
-        let clientX, clientY;
-        if (e.changedTouches) {
-            clientX = e.changedTouches[0].clientX;
-            clientY = e.changedTouches[0].clientY;
-        } else {
-            clientX = e.clientX;
-            clientY = e.clientY;
-        }
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
         return {
             x: (clientX - rect.left) * (canvas.width / rect.width),
             y: (clientY - rect.top) * (canvas.height / rect.height)
         };
     }
 
-    // Mouse Events
-    if (canvas) {
-        canvas.addEventListener('mousedown', startDraw);
-        canvas.addEventListener('mouseup', endDraw);
-        canvas.addEventListener('mousemove', draw);
-        canvas.addEventListener('mouseout', endDraw);
-
-        // Touch Events
-        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDraw(e); });
-        canvas.addEventListener('touchend', (e) => { e.preventDefault(); endDraw(); });
-        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); });
-    }
-
-
-    // --- Image Processing Logic (Adapted) ---
-
-    function handleImageUpload(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            if (sourceImage) {
-                sourceImage.onload = () => {
-                    processImage(sourceImage);
-                    hasContent = true;
-                    if (uploadArea) uploadArea.style.display = 'none';
-                };
-                sourceImage.src = event.target.result;
-            }
-        };
-        reader.readAsDataURL(file);
-    }
-
-    function processImage(img) {
-        // Keep dimensions, but scale to fit if too huge, or match default canvas
-        // Let's resize canvas to image aspect ratio, but keep within bounds
-        const maxWidth = 800;
-        const maxHeight = 600;
-        let width = img.width;
-        let height = img.height;
-        
-        // Simple scale down
-        if (width > maxWidth || height > maxHeight) {
-            const ratio = Math.min(maxWidth / width, maxHeight / height);
-            width = width * ratio;
-            height = height * ratio;
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        
-        // Re-apply context settings after resize
+    const startDraw = (e) => {
+        isDrawing = true;
+        if (uploadArea) uploadArea.style.display = 'none';
         updateBrush();
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
+        const { x, y } = getCoords(e);
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+    };
 
-        // ... Existing Image Processing Code ...
-        
-        // Create offscreen canvases
-        const colorLayer = document.createElement('canvas');
-        const edgeLayer = document.createElement('canvas');
-        colorLayer.width = width;
-        colorLayer.height = height;
-        edgeLayer.width = width;
-        edgeLayer.height = height;
+    const doDraw = (e) => {
+        if (!isDrawing) return;
+        if (e.type === 'touchmove') e.preventDefault();
+        const { x, y } = getCoords(e);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+    };
 
-        const colorCtx = colorLayer.getContext('2d');
-        const edgeCtx = edgeLayer.getContext('2d');
+    const stopDraw = () => { isDrawing = false; ctx.beginPath(); };
 
-        // Edge Detection
-        edgeCtx.drawImage(img, 0, 0, width, height);
-        edgeCtx.filter = 'grayscale(100%) contrast(300%)';
-        edgeCtx.drawImage(img, 0, 0, width, height);
-        edgeCtx.globalCompositeOperation = 'difference';
-        edgeCtx.drawImage(img, 2, 2, width, height);
-        edgeCtx.globalCompositeOperation = 'source-over';
-        edgeCtx.filter = 'grayscale(100%) invert(100%) contrast(1000%) brightness(1.5)';
-        edgeCtx.drawImage(edgeLayer, 0, 0);
-        edgeCtx.filter = 'none';
+    canvas.onmousedown = startDraw;
+    canvas.onmousemove = doDraw;
+    window.onmouseup = stopDraw;
 
-        // Color Simplification
-        const smallCanvas = document.createElement('canvas');
-        const sWidth = width / 8;
-        const sHeight = height / 8;
-        smallCanvas.width = sWidth;
-        smallCanvas.height = sHeight;
-        const sCtx = smallCanvas.getContext('2d');
-        sCtx.drawImage(img, 0, 0, sWidth, sHeight);
+    canvas.ontouchstart = startDraw;
+    canvas.ontouchmove = doDraw;
+    canvas.ontouchend = stopDraw;
 
-        colorCtx.filter = 'saturate(200%) contrast(150%) blur(3px)';
-        colorCtx.drawImage(smallCanvas, 0, 0, sWidth, sHeight, -5, -5, width + 10, height + 10); 
-
-        // Composite to Main Canvas
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(0, 0, width, height);
-
-        ctx.globalCompositeOperation = 'multiply';
-        ctx.drawImage(colorLayer, 0, 0);
-        ctx.drawImage(edgeLayer, 0, 0);
-
-        // Noise
-        applyTexture(width, height);
-
-        // Reset Composite for future drawing
-        ctx.globalCompositeOperation = 'source-over';
-        
-        // Apply CSS Filter for visual effect
-        canvas.style.filter = 'url(#crayon-filter)';
-    }
-
-    function applyTexture(w, h) {
-        const noiseCanvas = document.createElement('canvas');
-        noiseCanvas.width = w;
-        noiseCanvas.height = h;
-        const nCtx = noiseCanvas.getContext('2d');
-        
-        const imageData = nCtx.createImageData(w, h);
-        const buffer = new Uint32Array(imageData.data.buffer);
-        
-        for (let i = 0; i < buffer.length; i++) {
-            if (Math.random() < 0.1) { 
-                buffer[i] = 0x10000000; 
-            }
-        }
-        
-        nCtx.putImageData(imageData, 0, 0);
-        ctx.globalCompositeOperation = 'multiply';
-        ctx.drawImage(noiseCanvas, 0, 0);
-        ctx.globalCompositeOperation = 'source-over';
-    }
-
-    // --- Diary Text Sync (Keep existing) ---
-    const diaryText = document.getElementById('diary-text');
-    const gridDisplay = document.getElementById('diary-grid-display');
-    const MAX_COLS = 13;
-    const GRID_SIZE = 40;
-
-    if (diaryText) {
-        diaryText.addEventListener('input', syncTextToGrid);
-        syncTextToGrid();
-    }
-
-    function syncTextToGrid() {
-        if (!diaryText || !gridDisplay) return;
-        const text = diaryText.value;
-        gridDisplay.innerHTML = '';
-        let col = 0;
-        let row = 0;
-        const chars = Array.from(text);
-
-        chars.forEach(char => {
-            const cell = document.createElement('div');
-            cell.className = 'grid-cell';
-            
-            if (char === '\n') {
-                const remaining = MAX_COLS - col;
-                for (let i = 0; i < remaining; i++) {
-                    const filler = document.createElement('div');
-                    filler.className = 'grid-cell';
-                    gridDisplay.appendChild(filler);
-                }
-                col = 0;
-                row++;
-                return;
-            }
-            
-            cell.textContent = char;
-            gridDisplay.appendChild(cell);
-            
-            col++;
-            if (col >= MAX_COLS) {
-                col = 0;
-                row++;
-            }
-        });
-    }
-
-    // --- Save Functionality ---
+    // --- Save Logic ---
     if (saveBtn) {
-        saveBtn.addEventListener('click', () => {
-            const diaryContent = diaryText.value;
+        saveBtn.onclick = () => {
             const diaryDate = document.getElementById('diary-date').value;
             const weatherSelect = document.getElementById('weather-select');
-            const weatherText = weatherSelect.options[weatherSelect.selectedIndex].text;
+            const weatherText = weatherSelect ? weatherSelect.options[weatherSelect.selectedIndex].text : '';
+            const content = diaryText ? diaryText.value : '';
 
             const exportCanvas = document.createElement('canvas');
-            const exportCtx = exportCanvas.getContext('2d');
+            const eCtx = exportCanvas.getContext('2d');
 
             const padding = 40;
-            const headerHeight = 120;
-            const imageWidth = canvas.width;
-            const imageHeight = canvas.height;
-            const textSectionHeight = Math.max(400, (Math.ceil(diaryContent.length / MAX_COLS) + 5) * GRID_SIZE); 
-            
-            exportCanvas.width = imageWidth + (padding * 2);
-            exportCanvas.height = headerHeight + imageHeight + textSectionHeight + (padding * 2);
+            const headerH = 120;
+            const imgW = canvas.width;
+            const imgH = canvas.height;
+            const textH = 400; // Fixed text area height for export
+
+            exportCanvas.width = imgW + (padding * 2);
+            exportCanvas.height = headerH + imgH + textH + (padding * 2) + 60;
 
             // Background
-            exportCtx.fillStyle = '#f7f3e8';
-            exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+            eCtx.fillStyle = '#f7f3e8';
+            eCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
 
             // Header
-            exportCtx.font = `bold 40px 'SamdungDaeHan'`;
-            exportCtx.fillStyle = '#ff6b6b';
-            exportCtx.textAlign = 'center';
-            exportCtx.fillText('그림일기', exportCanvas.width / 2, padding + 40);
+            eCtx.font = "bold 40px 'SamdungDaeHan'";
+            eCtx.fillStyle = '#ff6b6b';
+            eCtx.textAlign = 'center';
+            eCtx.fillText('그림일기', exportCanvas.width / 2, padding + 40);
 
-            exportCtx.font = `24px 'SamdungDaeHan'`;
-            exportCtx.fillStyle = '#333';
-            exportCtx.textAlign = 'left';
-            exportCtx.fillText(`날짜: ${diaryDate || '____년 __월 __일'}`, padding, padding + 80);
-            exportCtx.textAlign = 'right';
-            exportCtx.fillText(`날씨: ${weatherText}`, exportCanvas.width - padding, padding + 80);
+            eCtx.font = "24px 'SamdungDaeHan'";
+            eCtx.fillStyle = '#333';
+            eCtx.textAlign = 'left';
+            eCtx.fillText(`날짜: ${diaryDate || '____년 __월 __일'}`, padding, padding + 80);
+            eCtx.textAlign = 'right';
+            eCtx.fillText(`날씨: ${weatherText}`, exportCanvas.width - padding, padding + 80);
 
-            // Image Frame
-            exportCtx.fillStyle = '#fff';
-            exportCtx.fillRect(padding - 5, headerHeight + padding - 5, imageWidth + 10, imageHeight + 10);
-            exportCtx.strokeStyle = '#333';
-            exportCtx.lineWidth = 3;
-            exportCtx.strokeRect(padding - 5, headerHeight + padding - 5, imageWidth + 10, imageHeight + 10);
-            
-            // Draw Main Canvas Content
-            exportCtx.drawImage(canvas, padding, headerHeight + padding);
+            // Image
+            eCtx.fillStyle = '#fff';
+            eCtx.fillRect(padding - 5, headerH + padding - 5, imgW + 10, imgH + 10);
+            eCtx.strokeStyle = '#333';
+            eCtx.lineWidth = 3;
+            eCtx.strokeRect(padding - 5, headerH + padding - 5, imgW + 10, imgH + 10);
+            eCtx.drawImage(canvas, padding, headerH + padding);
 
-            // Text Grid
-            const textStartY = headerHeight + imageHeight + padding + 60;
-            const gridWidth = MAX_COLS * GRID_SIZE;
-            const gridStartX = (exportCanvas.width - gridWidth) / 2;
-            
-            const rowsToDraw = Math.floor(textSectionHeight / GRID_SIZE);
+            // Text Grid & Content
+            const textY = headerH + imgH + padding + 60;
+            const gridSize = 40;
+            const cols = 13;
+            const gridW = cols * gridSize;
+            const gridX = (exportCanvas.width - gridW) / 2;
+            const rows = 10;
 
-            exportCtx.strokeStyle = '#b0c4de';
-            exportCtx.lineWidth = 1;
-
-            for (let i = 0; i <= rowsToDraw; i++) {
-                const y = textStartY + (i * GRID_SIZE);
-                exportCtx.beginPath();
-                exportCtx.moveTo(gridStartX, y);
-                exportCtx.lineTo(gridStartX + gridWidth, y);
-                exportCtx.stroke();
+            eCtx.strokeStyle = '#b0c4de';
+            eCtx.lineWidth = 1;
+            for(let i=0; i<=rows; i++){
+                eCtx.beginPath();
+                eCtx.moveTo(gridX, textY + i*gridSize);
+                eCtx.lineTo(gridX + gridW, textY + i*gridSize);
+                eCtx.stroke();
             }
-            for (let j = 0; j <= MAX_COLS; j++) {
-                const x = gridStartX + (j * GRID_SIZE);
-                exportCtx.beginPath();
-                exportCtx.moveTo(x, textStartY);
-                exportCtx.lineTo(x, textStartY + (rowsToDraw * GRID_SIZE));
-                exportCtx.stroke();
+            for(let j=0; j<=cols; j++){
+                eCtx.beginPath();
+                eCtx.moveTo(gridX + j*gridSize, textY);
+                eCtx.lineTo(gridX + j*gridSize, textY + rows*gridSize);
+                eCtx.stroke();
             }
 
-            // Text Content
-            exportCtx.font = `24px 'SamdungDaeHan'`;
-            exportCtx.fillStyle = '#333';
-            exportCtx.textAlign = 'center';
-            exportCtx.textBaseline = 'middle';
+            eCtx.font = "24px 'SamdungDaeHan'";
+            eCtx.fillStyle = '#333';
+            eCtx.textAlign = 'center';
+            eCtx.textBaseline = 'middle';
             
-            let col = 0;
-            let row = 0;
-            const chars = Array.from(diaryContent);
-
+            const chars = Array.from(content);
+            let c = 0, r = 0;
             chars.forEach(char => {
-                if (char === '\n') {
-                    col = 0;
-                    row++;
-                    return;
+                if (char === '\n') { c = 0; r++; return; }
+                if (r < rows) {
+                    const x = gridX + c*gridSize + gridSize/2;
+                    const y = textY + r*gridSize + gridSize/2 + 2;
+                    eCtx.fillText(char, x, y);
                 }
-                if (row < rowsToDraw) {
-                    const x = gridStartX + (col * GRID_SIZE) + (GRID_SIZE / 2);
-                    const y = textStartY + (row * GRID_SIZE) + (GRID_SIZE / 2) + 2;
-                    exportCtx.fillText(char, x, y);
-                }
-                col++;
-                if (col >= MAX_COLS) {
-                    col = 0;
-                    row++;
-                }
+                c++; if (c >= cols) { c = 0; r++; }
             });
 
             const link = document.createElement('a');
             link.download = `그림일기_${diaryDate || '오늘'}.png`;
             link.href = exportCanvas.toDataURL('image/png');
             link.click();
-        });
+        };
     }
 
-    // Initialize
-    initCanvas();
-});
+    updateUI();
+}
+
+function processImage(img, canvas, ctx, uploadArea) {
+    const maxWidth = 800, maxHeight = 600;
+    let w = img.width, h = img.height;
+    const ratio = Math.min(maxWidth / w, maxHeight / h);
+    w *= ratio; h *= ratio;
+
+    canvas.width = w;
+    canvas.height = h;
+    if (uploadArea) uploadArea.style.display = 'none';
+
+    // Simplified Crayon Effect
+    const offCanvas = document.createElement('canvas');
+    offCanvas.width = w; offCanvas.height = h;
+    const offCtx = offCanvas.getContext('2d');
+    
+    // Sketch lines
+    offCtx.filter = 'grayscale(100%) contrast(500%) invert(100%)';
+    offCtx.drawImage(img, 0, 0, w, h);
+    
+    // Main colors
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.filter = 'saturate(150%) contrast(120%) blur(2px)';
+    ctx.drawImage(img, 0, 0, w, h);
+    ctx.filter = 'none';
+    
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.drawImage(offCanvas, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+    
+    canvas.style.filter = 'url(#crayon-filter)';
+}
+
+// Start everything
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
