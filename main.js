@@ -496,27 +496,50 @@ function processImage(img, canvas, ctx, uploadArea) {
     canvas.height = h;
     if (uploadArea) uploadArea.style.display = 'none';
 
-    // Simplified Crayon Effect
-    const offCanvas = document.createElement('canvas');
-    offCanvas.width = w; offCanvas.height = h;
-    const offCtx = offCanvas.getContext('2d');
-    
-    // Sketch lines
-    offCtx.filter = 'grayscale(100%) contrast(500%) invert(100%)';
-    offCtx.drawImage(img, 0, 0, w, h);
-    
-    // Main colors
-    ctx.fillStyle = '#fff';
+    // 1. Color Layer (Messy coloring)
+    // Blur to lose detail, high saturation for 'crayon' colors
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, w, h);
-    ctx.filter = 'saturate(150%) contrast(120%) blur(2px)';
+    ctx.filter = 'saturate(300%) contrast(140%) brightness(110%) blur(5px)';
     ctx.drawImage(img, 0, 0, w, h);
-    ctx.filter = 'none';
+    ctx.restore();
+
+    // 2. Edge Detection (Sketch lines)
+    const edgeCanvas = document.createElement('canvas');
+    edgeCanvas.width = w;
+    edgeCanvas.height = h;
+    const eCtx = edgeCanvas.getContext('2d');
+
+    // Draw original
+    eCtx.drawImage(img, 0, 0, w, h);
     
+    // Difference blend to find edges
+    eCtx.globalCompositeOperation = 'difference';
+    // Offset slightly to highlight edges
+    eCtx.drawImage(img, 2, 2, w, h);
+    
+    // Process edges: make them dark lines on white paper
+    eCtx.globalCompositeOperation = 'source-over';
+    // grayscale -> invert (so edges are black) -> high contrast to threshold
+    eCtx.filter = 'grayscale(100%) invert(100%) contrast(1000%) brightness(1.3)';
+    eCtx.drawImage(edgeCanvas, 0, 0); // Apply filter to itself
+    
+    // 3. Composite Edges onto Color
+    ctx.save();
     ctx.globalCompositeOperation = 'multiply';
-    ctx.drawImage(offCanvas, 0, 0);
-    ctx.globalCompositeOperation = 'source-over';
+    ctx.filter = 'blur(0.5px)'; // Soften the harsh sketch lines slightly
+    ctx.drawImage(edgeCanvas, 0, 0);
+    ctx.restore();
     
+    // 4. Apply Texture Filter
     canvas.style.filter = 'url(#crayon-filter)';
+    
+    // Save history after processing
+    // Note: Calling saveHistory() here might be redundant if the caller does it, 
+    // but the caller in init() does it. The processImage doesn't need to save itself unless async.
+    // The previous implementation had the caller do saveHistory() inside the onload callback.
+    // We will keep it that way.
 }
 
 // Start everything
